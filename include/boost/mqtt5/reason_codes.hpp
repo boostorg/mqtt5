@@ -48,7 +48,7 @@ class reason_code {
     uint8_t _code;
     reason_codes::category _category { reason_codes::category::none };
 public:
-/// \cond INTERNAL
+/// \cond internal
     constexpr reason_code() : _code(0xff) {}
 
     constexpr reason_code(uint8_t code, reason_codes::category cat) :

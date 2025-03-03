@@ -21,6 +21,7 @@
 
 namespace boost::mqtt5::prop {
 
+/// \cond internal
 enum property_type : uint8_t {
     payload_format_indicator_t = 0x01,
     message_expiry_interval_t = 0x02,
@@ -50,7 +51,16 @@ enum property_type : uint8_t {
     subscription_identifier_available_t = 0x29,
     shared_subscription_available_t = 0x2a
 };
+/// \endcond
 
+/**
+ * \brief A class holding any number of Subscription Identifiers.
+ * 
+ * \details Subscription Identifier is an integer that can be set in \__SUBSCRIBE_PROPS\__ when subscribing to a Topic.
+ *    Broker will store the mapping between that Subscription and the Subscription Identifier.
+ *    When an incoming \__PUBLISH\__ message matches one or more Subscriptions, respective Subscription
+ *    Identifiers will be forwarded in the \__PUBLISH_PROPS\__ of the received message.
+ */
 class alignas(8) subscription_identifiers :
     public boost::container::small_vector<int32_t, 1>
 {
@@ -58,8 +68,11 @@ class alignas(8) subscription_identifiers :
 
 public:
     using base_type::base_type;
+
+    /// Constructs Subscription Identifiers with given parameters.
     subscription_identifiers(int32_t val) : base_type { val } {}
 
+    /// \{ Checks whether there are any Subscription Identifiers.
     bool has_value() const noexcept {
         return !empty();
     }
@@ -67,7 +80,9 @@ public:
     explicit operator bool() const noexcept {
         return !empty();
     }
+    /// \}
 
+    /// \{ Accesses the (first) Subscription Identifier.
     int32_t& operator*() noexcept {
         return front();
     }
@@ -75,19 +90,24 @@ public:
     int32_t operator*() const noexcept {
         return front();
     }
+    /// \}
 
+    /// Sets or replaces the (first) Subscription Identifier.
     void emplace(int32_t val = 0) {
         *this = val;
     }
 
+    /// Returns the first Subscription Identifier.
     int32_t value() const {
         return front();
     }
 
+    /// Returns the first Subscription Identifier if it exists, otherwise returns \p default_val
     int32_t value_or(int32_t default_val) const noexcept {
         return empty() ? default_val : front();
     }
 
+    /// Clears the Subscription Identifiers.
     void reset() noexcept {
         clear();
     }
@@ -142,6 +162,10 @@ using value_type_t = typename property_traits<p>::type;
 template <property_type p>
 constexpr std::string_view name_v = property_traits<p>::name;
 
+/**
+ * \brief Base class for different Property classes that contains common access
+        and modification functions.
+ */
 template <property_type ...Ps>
 class properties {
 
@@ -155,18 +179,21 @@ class properties {
 
 public:
 
+    /// \brief Accesses the value of a Property by its compile-time constant ID.
     template <property_type v>
     constexpr auto& operator[](std::integral_constant<property_type, v>)
     noexcept {
         return std::get<property<v>>(_props).value;
     }
 
+    /// \copydoc operator[]
     template <property_type v>
     constexpr const auto& operator[](std::integral_constant<property_type, v>)
     const noexcept {
         return std::get<property<v>>(_props).value;
     }
 
+/// \cond internal
     template <typename Func>
     using is_apply_on = std::conjunction<
         std::is_invocable<Func, value_type_t<Ps>&>...
@@ -176,7 +203,18 @@ public:
     using is_nothrow_apply_on = std::conjunction<
         std::is_nothrow_invocable<Func, value_type_t<Ps>&>...
     >;
+/// \endcond
 
+    /**
+    * \brief Applies a function to a Property identified by its ID.
+    *
+    * This function iterates over all Properties and invokes the provided function
+    * on the value of the Property that matches the given property ID.
+    *
+    * \param property_id The ID of the Property to apply the function on.
+    * \param func The function to invoke on the Property value.
+    * \return `true` if the function was applied to a Property and `false` otherwise.
+    */
     template <
         typename Func,
         std::enable_if_t<is_apply_on<Func>::value, bool> = true
@@ -190,14 +228,15 @@ public:
                     constexpr typename ptype::key prop;
                     if (prop.value == property_id)
                         std::invoke(func, px.value);
-                    return prop.value != property_id;
+                    return prop.value == property_id;
                 };
-                return (pc(ptype) && ...);
+                return (pc(ptype) || ...);
             },
             _props
         );
     }
 
+/// \cond internal
     template <typename Func>
     using is_visitor = std::conjunction<
         std::is_invocable_r<bool, Func, decltype(Ps), value_type_t<Ps>&>...
@@ -207,7 +246,20 @@ public:
     using is_nothrow_visitor = std::conjunction<
         std::is_nothrow_invocable<Func, decltype(Ps), value_type_t<Ps>&>...
     >;
+/// \endcond
 
+    /**
+    * \brief Invokes a visitor function on each Property.
+    *
+    * This function iterates over Properties and invokes the provided function 
+    * on each Property, passing both the compile-time constant Property ID and its value.
+    * The visitor function should return a boolean value that determines whether iteration continues.
+    *
+    * @param func The visitor function to invoke. It must accept two arguments: 
+    *        a Property ID and the corresponding Property value.
+    * @return `true` if the visitor function returns `true` for all Properties, 
+    *         `false` otherwise.
+    */
     template <
         typename Func,
         std::enable_if_t<is_visitor<Func>::value, bool> = true
@@ -221,12 +273,13 @@ public:
                     constexpr typename ptype::key prop;
                     return std::invoke(func, prop, px.value);
                 };
-                return (pc(props) &&...);
+                return (pc(props) && ...);
             },
             _props
         );
     }
 
+    /// \copydoc visit
     template <
         typename Func,
         std::enable_if_t<is_visitor<Func>::value, bool> = true

@@ -111,7 +111,7 @@ enum class no_local_e : std::uint8_t {
  * \brief Representation of the Retain As Published Subscribe Option.
  *
  * \details A Subscribe Option indicating whether or not Application Messages forwarded
- * using this subscription keep the \__RETAIN\__ flag they were published with.
+ * using this Subscription keep the \__RETAIN\__ flag they were published with.
  */
 enum class retain_as_published_e : std::uint8_t {
     /** \brief Application Messages have the \__RETAIN\__ flag set to 0. */
@@ -125,13 +125,13 @@ enum class retain_as_published_e : std::uint8_t {
  * \brief Representation of the Retain Handling Subscribe Option.
  *
  * \details A Subscribe Option specifying whether retained messages are sent
- * when the subscription is established.
+ * when the Subscription is established.
  */
 enum class retain_handling_e : std::uint8_t {
     /** \brief Send retained messages at the time of subscribe. */
     send = 0b00,
 
-    /** \brief Send retained message only if the subscription does not currently exist. */
+    /** \brief Send retained message only if the Subscription does not currently exist. */
     new_subscription_only = 0b01,
 
     /** \brief Do not send retained messages at the time of subscribe. */
@@ -153,7 +153,7 @@ struct subscribe_options {
     retain_as_published_e retain_as_published = retain_as_published_e::retain;
 
     /** \brief Option determining if retained messages are sent
-    when the subscription is established. */
+    when the Subscription is established. */
     retain_handling_e retain_handling = retain_handling_e::new_subscription_only;
 };
 
@@ -165,11 +165,11 @@ struct subscribe_topic {
     /** \brief An UTF-8 Encoded String indicating the Topics to which the Client wants to subscribe. */
     std::string topic_filter;
 
-    /** \brief The \ref subscribe_options associated with the subscription. */
+    /** \brief The \ref subscribe_options associated with the Subscription. */
     subscribe_options sub_opts;
 };
 
-/// \cond
+/// \cond internal
 
 class connect_props : public prop::properties<
     prop::session_expiry_interval_t,

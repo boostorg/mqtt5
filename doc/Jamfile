@@ -19,6 +19,7 @@ include-prefix = [ path.native $(include-prefix:D)/include ] ;
 local doxygen_include =
     error.hpp
     logger.hpp
+    property_types.hpp
     reason_codes.hpp
     types.hpp
     mqtt_client.hpp

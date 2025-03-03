@@ -9,7 +9,8 @@ The last field in the Variable header of __PUBLISH__ packet is a set of Properti
 A set contains a Property Length followed by the Properties.
 A Property consists of an Identifier and a value.
 
-This section lists all possible __PUBLISH__ Properties and describes their usage:
+This class extends [reflink2 prop__properties prop::properties], which provides common functionalities for all property classes.
+Below is a list of possible __PUBLISH__ Properties, along with descriptions of their usage:
 
 [table:publish_props PUBLISH properties
     [[Identifier] [Value type] [Description]]
@@ -31,8 +32,8 @@ The Identifiers listed in the table above are available within the `boost::mqtt5
 
 [note When accessing a property value, the subscript operator will return a `std::optional` of the value type for all properties,
 except for `boost::mqtt5::prop::user_property` and `boost::mqtt5::prop::subscription_identifier`, where it will return an instance of
-`std::vector<std::pair<std::string, std::string>>` and `boost::mqtt5::prop::subscription_identifiers` respectively.
-`boost::mqtt5::prop::subscription_identifiers` has the interface of `boost::container::small_vector`.]
+`std::vector<std::pair<std::string, std::string>>` and [reflink2 prop__subscription_identifiers prop::subscription_identifiers] respectively.
+[reflink2 prop__subscription_identifiers prop::subscription_identifiers] has the interface of `boost::container::small_vector`.]
 
 [h4 Example]
 

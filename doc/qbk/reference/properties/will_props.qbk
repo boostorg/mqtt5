@@ -10,7 +10,8 @@ and the Application Message properties to be sent with the [reflink2 will Will] 
 The Will Properties consists of a Property Length and the Properties.
 A Property consists of an Identifier and a value.
 
-This section lists all possible [reflink2 will Will] Properties and describes their usage:
+This class extends [reflink2 prop__properties prop::properties], which provides common functionalities for all property classes.
+Below is a list of possible [reflink2 will Will] Properties, along with descriptions of their usage:
 
 [table:will_props Will properties
     [[Identifier] [Value type] [Description]]

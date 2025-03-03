@@ -9,7 +9,8 @@ The last field in the Variable header of __PUBACK__ packet is a set of Propertie
 A set contains a Property Length followed by the Properties.
 A Property consists of an Identifier and a value.
 
-This section lists all possible __PUBACK__ Properties and describes their usage:
+This class extends [reflink2 prop__properties prop::properties], which provides common functionalities for all property classes.
+Below is a list of possible __PUBACK__ Properties, along with descriptions of their usage:
 
 [table:puback_props PUBACK properties
     [[Identifier] [Value type] [Description]]

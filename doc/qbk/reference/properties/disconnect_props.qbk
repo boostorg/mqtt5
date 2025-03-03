@@ -9,7 +9,8 @@ The last field in the Variable header of __DISCONNECT__ packet is a set of Prope
 A set contains a Property Length followed by the Properties.
 A Property consists of an Identifier and a value.
 
-This section lists all possible __DISCONNECT__ Properties and describes their usage:
+This class extends [reflink2 prop__properties prop::properties], which provides common functionalities for all property classes.
+Below is a list of possible __DISCONNECT__ Properties, along with descriptions of their usage:
 
 [table:disconnect_props DISCONNECT properties
     [[Identifier] [Value type] [Description]]

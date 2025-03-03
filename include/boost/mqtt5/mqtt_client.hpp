@@ -522,10 +522,10 @@ public:
     }
 
     /**
-     * \brief Send a \__SUBSCRIBE\__ packet to Broker to create a subscription
+     * \brief Send a \__SUBSCRIBE\__ packet to Broker to create a Subscription
      * to one or more Topics of interest.
      *
-     * \details After the subscription has been established, the Broker will send
+     * \details After the Subscription has been established, the Broker will send
      * PUBLISH packets to the Client to forward Application Messages that were published
      * to Topics that the Client subscribed to. The Application Messages can be received
      * with \ref mqtt_client::async_receive function.
@@ -543,7 +543,7 @@ public:
      *        void (
      *            __ERROR_CODE__,    // Result of operation.
      *            std::vector<__REASON_CODE__>,  // Vector of Reason Codes indicating
-     *                                           // the subscription result for each Topic
+     *                                           // the Subscription result for each Topic
      *                                           // in the SUBSCRIBE packet.
      *            __SUBACK_PROPS__,  // Properties received in the SUBACK packet.
      *        )
@@ -595,10 +595,10 @@ public:
     }
 
     /**
-     * \brief Send a \__SUBSCRIBE\__ packet to Broker to create a subscription
+     * \brief Send a \__SUBSCRIBE\__ packet to Broker to create a Subscription
      * to one Topic of interest.
      *
-     * \details After the subscription has been established, the Broker will send
+     * \details After the Subscription has been established, the Broker will send
      * \__PUBLISH\__ packets to the Client to forward Application Messages that were published
      * to Topics that the Client subscribed to. The Application Messages can be received
      * with \ref mqtt_client::async_receive function.
@@ -616,7 +616,7 @@ public:
      *        void (
      *            __ERROR_CODE__,    // Result of operation.
      *            std::vector<__REASON_CODE__>,  // Vector of Reason Codes containing the
-     *                                           // single subscription result for the Topic
+     *                                           // single Subscription result for the Topic
      *                                           // in the SUBSCRIBE packet.
      *            __SUBACK_PROPS__,  // Properties received in the SUBACK packet.
      *        )
@@ -808,7 +808,7 @@ public:
      * from internal storage.
      *
      * \note It is only recommended to call this function if you have established
-     * a successful subscription to a Topic using the \ref async_subscribe function.
+     * a successful Subscription to a Topic using the \ref async_subscribe function.
      *
      * \param token Completion token that will be used to produce a
      * completion handler. The handler will be invoked when the operation completes.

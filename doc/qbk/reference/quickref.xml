@@ -20,6 +20,8 @@
           <member><link linkend="mqtt5.ref.boost__mqtt5__subscribe_options">subscribe_options</link></member>
           <member><link linkend="mqtt5.ref.boost__mqtt5__subscribe_topic">subscribe_topic</link></member>
           <member><link linkend="mqtt5.ref.boost__mqtt5__will">will</link></member>
+          <member><link linkend="mqtt5.ref.boost__mqtt5__prop__subscription_identifiers">subscription_identifiers</link></member>
+          <member><link linkend="mqtt5.ref.boost__mqtt5__prop__properties">properties</link></member>
         </simplelist>
         <bridgehead renderas="sect3">Concepts</bridgehead>
         <simplelist type="vert" columns="1">
