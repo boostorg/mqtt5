@@ -225,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE(receive_disconnect_while_reconnecting, shared_test_data)
 template <typename VerifyFun>
 void run_receive_test(
     test::msg_exchange broker_side, int num_of_receives,
-    size_t max_packet_size, VerifyFun&& verify_fun
+    uint32_t max_packet_size, VerifyFun&& verify_fun
 ) {
     const int expected_handlers_called = num_of_receives;
     int handlers_called = 0;
