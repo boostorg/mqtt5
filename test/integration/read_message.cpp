@@ -30,11 +30,11 @@ using test::after;
 using namespace std::chrono_literals;
 
 void test_receive_malformed_packet(
-    std::string malformed_packet, std::string reason_string
+    std::string malformed_packet, reason_code rc, std::string reason_string
 ) {
     // packets
     auto connect = encoders::encode_connect(
-        "", std::nullopt, std::nullopt, 60, false, {}, std::nullopt
+        "", std::nullopt, std::nullopt, 60, false, test::dflt_cprops, std::nullopt
     );
     connack_props co_props;
     co_props[prop::maximum_packet_size] = 2000;
@@ -42,9 +42,7 @@ void test_receive_malformed_packet(
 
     disconnect_props dc_props;
     dc_props[prop::reason_string] = reason_string;
-    auto disconnect = encoders::encode_disconnect(
-        reason_codes::malformed_packet.value(), dc_props
-    );
+    auto disconnect = encoders::encode_disconnect(rc.value(), dc_props);
 
     error_code success {};
     test::msg_exchange broker_side;
@@ -82,6 +80,7 @@ void test_receive_malformed_packet(
 BOOST_AUTO_TEST_CASE(forbidden_packet_type) {
     test_receive_malformed_packet(
         std::string({ 0x00 }),
+        reason_codes::malformed_packet,
         "Malformed Packet received from the Server"
     );
 }
@@ -89,6 +88,7 @@ BOOST_AUTO_TEST_CASE(forbidden_packet_type) {
 BOOST_AUTO_TEST_CASE(malformed_varint) {
     test_receive_malformed_packet(
         std::string({ 0x10, -1 /* 0xFF */, -1, -1, -1 }),
+        reason_codes::malformed_packet,
         "Malformed Packet received from the Server"
     );
 }
@@ -96,6 +96,7 @@ BOOST_AUTO_TEST_CASE(malformed_varint) {
 BOOST_AUTO_TEST_CASE(malformed_fixed_header) {
     test_receive_malformed_packet(
         std::string({ 0x60, 1, 0 }),
+        reason_codes::malformed_packet,
         "Malformed Packet received from the Server"
     );
 }
@@ -103,13 +104,15 @@ BOOST_AUTO_TEST_CASE(malformed_fixed_header) {
 BOOST_AUTO_TEST_CASE(packet_larger_than_allowed) {
     test_receive_malformed_packet(
         std::string({ 0x10, -1, -1, -1, 0 }),
-        "Malformed Packet received from the Server"
+        reason_codes::packet_too_large,
+        "The packet size is greater than Maximum Packet Size"
     );
 }
 
 BOOST_AUTO_TEST_CASE(receive_malformed_publish) {
     test_receive_malformed_packet(
         std::string({ 0x30, 1, -1 }),
+        reason_codes::malformed_packet,
         "Malformed PUBLISH received: cannot decode"
     );
 }
@@ -122,7 +125,7 @@ struct shared_test_data {
     const std::string payload = "payload";
 
     const std::string connect = encoders::encode_connect(
-        "", std::nullopt, std::nullopt, 60, false, {}, std::nullopt
+        "", std::nullopt, std::nullopt, 60, false, test::dflt_cprops, std::nullopt
     );
     const std::string connack = encoders::encode_connack(false, uint8_t(0x00), {});
 
