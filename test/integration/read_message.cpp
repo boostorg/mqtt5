@@ -294,7 +294,7 @@ BOOST_DATA_TEST_CASE_F(
         0, topic, payload1, qos_e::at_most_once, retain_e::no, dup_e::no, {}
     );
 
-    const uint32_t max_packet_size = std::max(
+    const uint32_t max_packet_size = (std::max)(
         publish1.size(),
         publish1.size() * max_packet_size_multiplier + max_packet_size_offset
     );

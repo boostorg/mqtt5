@@ -194,7 +194,7 @@ private:
     }
 
     uint32_t max_recv_size() const {
-        return std::min(
+        return (std::min)(
             _svc.connect_property(prop::maximum_packet_size)
                 .value_or(default_max_recv_size),
             static_cast<uint32_t>(default_max_send_size)
