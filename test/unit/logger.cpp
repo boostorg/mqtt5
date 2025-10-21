@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE(client_disconnect) {
             .expect(connect)
                 .complete_with(error_code {}, after(0ms))
                 .reply_with(connack, after(0ms))
-            .send(disconnect, after(50ms))
+            .send(disconnect, after(30ms))
             .expect(connect);
 
         asio::io_context ioc;
