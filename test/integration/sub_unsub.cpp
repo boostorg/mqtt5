@@ -22,7 +22,6 @@
 
 #include "test_common/message_exchange.hpp"
 #include "test_common/packet_util.hpp"
-#include "test_common/test_service.hpp"
 #include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
@@ -69,9 +68,13 @@ struct shared_test_data {
 using test::after;
 using namespace std::chrono_literals;
 
-template <test::operation_type op_type>
-void run_test(test::msg_exchange broker_side) {
-    constexpr int expected_handlers_called = 1;
+using client_type = mqtt_client<test::test_stream>;
+
+template <typename TestBody>
+void run_test(
+    test::msg_exchange broker_side, TestBody&& test_body,
+    int expected_handlers_called
+) {
     int handlers_called = 0;
 
     asio::io_context ioc;
@@ -80,42 +83,42 @@ void run_test(test::msg_exchange broker_side) {
         ioc, executor, std::move(broker_side)
     );
 
-    using client_type = mqtt_client<test::test_stream>;
     client_type c(executor);
     c.brokers("127.0.0.1,127.0.0.1") // to avoid reconnect backoff
         .async_run(asio::detached);
 
-    auto data = shared_test_data();
-    if constexpr (op_type == test::operation_type::subscribe)
-        c.async_subscribe(
-            data.sub_topics, subscribe_props {},
-            [&handlers_called, &c](error_code ec, std::vector<reason_code> rcs, suback_props) {
-                ++handlers_called;
-
-                BOOST_TEST(!ec);
-                BOOST_TEST_REQUIRE(rcs.size() == 1u);
-                BOOST_TEST(rcs[0] == reason_codes::granted_qos_0);
-
-                c.cancel();
-            }
-        );
-    else 
-        c.async_unsubscribe(
-            data.unsub_topics, unsubscribe_props {},
-            [&handlers_called, &c](error_code ec, std::vector<reason_code> rcs, unsuback_props) {
-                ++handlers_called;
-
-                BOOST_TEST(!ec);
-                BOOST_TEST_REQUIRE(rcs.size() == 1u);
-                BOOST_TEST(rcs[0] == reason_codes::success);
-
-                c.cancel();
-            }
-        );
+    test_body(c, handlers_called);
 
     ioc.run_for(5s);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
+}
+
+template <test::operation_type op_type>
+void run_basic_test(test::msg_exchange broker_side) {
+    auto body = [](client_type& c, int& handlers_called) {
+        auto handler = [&handlers_called, &c](
+            error_code ec, std::vector<reason_code> rcs, auto
+        ) {
+            ++handlers_called;
+
+            BOOST_TEST(!ec);
+            BOOST_TEST_REQUIRE(rcs.size() == 1u);
+            if constexpr (op_type == test::operation_type::subscribe)
+                BOOST_TEST(rcs[0] == reason_codes::granted_qos_0);
+            else
+                BOOST_TEST(rcs[0] == reason_codes::success);
+
+            c.cancel();
+        };
+
+        shared_test_data data;
+        if constexpr (op_type == test::operation_type::subscribe)
+            c.async_subscribe(data.sub_topics, subscribe_props {}, handler);
+        else
+            c.async_unsubscribe(data.unsub_topics, unsubscribe_props {}, handler);
+    };
+    return run_test(std::move(broker_side), std::move(body), 1);
 }
 
 // subscribe
@@ -124,37 +127,37 @@ BOOST_FIXTURE_TEST_CASE(fail_to_send_subscribe, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(fail, after(1ms))
+            .complete_with(fail, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(suback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(suback, after(0ms));
 
-    run_test<test::operation_type::subscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::subscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(fail_to_receive_suback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .send(fail, after(30ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(suback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(suback, after(0ms));
 
-    run_test<test::operation_type::subscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::subscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(receive_malformed_suback, shared_test_data) {
@@ -172,21 +175,21 @@ BOOST_FIXTURE_TEST_CASE(receive_malformed_suback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_suback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_suback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(suback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(suback, after(0ms));
 
-    run_test<test::operation_type::subscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::subscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_suback, shared_test_data) {
@@ -206,21 +209,21 @@ BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_suback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_suback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_suback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(suback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(suback, after(0ms));
 
-    run_test<test::operation_type::subscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::subscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(mismatched_num_of_suback_rcs, shared_test_data) {
@@ -240,21 +243,21 @@ BOOST_FIXTURE_TEST_CASE(mismatched_num_of_suback_rcs, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_suback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_suback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(subscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(suback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(suback, after(0ms));
 
-    run_test<test::operation_type::subscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::subscribe>(std::move(broker_side));
 }
 
 // unsubscribe
@@ -263,37 +266,37 @@ BOOST_FIXTURE_TEST_CASE(fail_to_send_unsubscribe, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(fail, after(1ms))
+            .complete_with(fail, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(unsuback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(unsuback, after(0ms));
 
-    run_test<test::operation_type::unsubscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::unsubscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(fail_to_receive_unsuback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .send(fail, after(30ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(unsuback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(unsuback, after(0ms));
 
-    run_test<test::operation_type::unsubscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::unsubscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(receive_malformed_unsuback, shared_test_data) {
@@ -311,21 +314,21 @@ BOOST_FIXTURE_TEST_CASE(receive_malformed_unsuback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_unsuback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_unsuback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(unsuback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(unsuback, after(0ms));
 
-    run_test<test::operation_type::unsubscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::unsubscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_unsuback, shared_test_data) {
@@ -345,21 +348,21 @@ BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_unsuback, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_unsuback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_unsuback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(unsuback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(unsuback, after(0ms));
 
-    run_test<test::operation_type::unsubscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::unsubscribe>(std::move(broker_side));
 }
 
 BOOST_FIXTURE_TEST_CASE(mismatched_num_of_unsuback_rcs, shared_test_data) {
@@ -379,87 +382,61 @@ BOOST_FIXTURE_TEST_CASE(mismatched_num_of_unsuback_rcs, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(malformed_unsuback, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(malformed_unsuback, after(0ms))
         .expect(disconnect)
-            .complete_with(success, after(1ms))
+            .complete_with(success, after(0ms))
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms))
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
         .expect(unsubscribe)
-            .complete_with(success, after(1ms))
-            .reply_with(unsuback, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(unsuback, after(0ms));
 
-    run_test<test::operation_type::unsubscribe>(std::move(broker_side));
+    run_basic_test<test::operation_type::unsubscribe>(std::move(broker_side));
 }
 
 template <test::operation_type op_type>
 void run_cancellation_test(test::msg_exchange broker_side) {
-    constexpr int expected_handlers_called = 1;
-    int handlers_called = 0;
-
-    asio::io_context ioc;
-    auto executor = ioc.get_executor();
-    auto& broker = asio::make_service<test::test_broker>(
-        ioc, executor, std::move(broker_side)
-    );
-
-    using client_type = mqtt_client<test::test_stream>;
-    client_type c(executor);
-    c.brokers("127.0.0.1,127.0.0.1") // to avoid reconnect backoff
-        .async_run(asio::detached);
-
     asio::cancellation_signal cancel_signal;
-    auto data = shared_test_data();
-    if constexpr (op_type == test::operation_type::subscribe)
-        c.async_subscribe(
-            data.sub_topics, subscribe_props {},
-            asio::bind_cancellation_slot(
-                cancel_signal.slot(),
-                [&handlers_called, &c](error_code ec, std::vector<reason_code> rcs, suback_props) {
-                    ++handlers_called;
 
-                    BOOST_TEST(ec == asio::error::operation_aborted);
-                    BOOST_TEST_REQUIRE(rcs.size() == 1u);
-                    BOOST_TEST(rcs[0] == reason_codes::empty);
+    auto body = [&cancel_signal](client_type& c, int& handlers_called) {
+        auto handler = [&handlers_called, &c](
+            error_code ec, std::vector<reason_code> rcs, auto
+        ) {
+            ++handlers_called;
 
-                    c.cancel();
-                }
-            )
-        );
-    else
-        c.async_unsubscribe(
-            data.unsub_topics, unsubscribe_props {},
-            asio::bind_cancellation_slot(
-                cancel_signal.slot(),
-                [&handlers_called, &c](error_code ec, std::vector<reason_code> rcs, unsuback_props) {
-                    ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+            BOOST_TEST_REQUIRE(rcs.size() == 1u);
+            BOOST_TEST(rcs[0] == reason_codes::empty);
 
-                    BOOST_TEST(ec == asio::error::operation_aborted);
-                    BOOST_TEST_REQUIRE(rcs.size() == 1u);
-                    BOOST_TEST(rcs[0] == reason_codes::empty);
-
-                    c.cancel();
-                }
-            )
+            c.cancel();
+        };
+        auto bound_handler = asio::bind_cancellation_slot(
+            cancel_signal.slot(), handler
         );
 
-    cancel_signal.emit(asio::cancellation_type::total);
+        auto data = shared_test_data();
+        if constexpr (op_type == test::operation_type::subscribe)
+            c.async_subscribe(data.sub_topics, subscribe_props{}, bound_handler);
+        else
+            c.async_unsubscribe(data.unsub_topics, unsubscribe_props{}, bound_handler);
 
-    ioc.run_for(2s);
-    BOOST_TEST(handlers_called == expected_handlers_called);
-    BOOST_TEST(broker.received_all_expected());
+        cancel_signal.emit(asio::cancellation_type::total);
+    };
+
+    run_test(std::move(broker_side), std::move(body), 1);
 }
 
 BOOST_FIXTURE_TEST_CASE(cancel_resending_subscribe, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms));
 
     run_cancellation_test<test::operation_type::subscribe>(std::move(broker_side));
 }
@@ -468,10 +445,110 @@ BOOST_FIXTURE_TEST_CASE(cancel_resending_unsubscribe, shared_test_data) {
     test::msg_exchange broker_side;
     broker_side
         .expect(connect)
-            .complete_with(success, after(1ms))
-            .reply_with(connack, after(2ms));
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms));
 
     run_cancellation_test<test::operation_type::unsubscribe>(std::move(broker_side));
+}
+
+template <prop::property_type p>
+void run_sub_validation_test(
+    std::integral_constant<prop::property_type, p> prop,
+    prop::value_type_t<p> val, error_code expected_ec
+) {
+    auto shared_data = shared_test_data();
+
+    connack_props props;
+    props[prop] = val;
+    auto connack = encoders::encode_connack(
+        false, reason_codes::success.value(), props
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(shared_data.connect)
+            .complete_with(shared_data.success, after(0ms))
+            .reply_with(connack, after(0ms));
+
+    auto body = [expected_ec](client_type& c, int& handlers_called) {
+        subscribe_props sprops;
+        sprops[prop::subscription_identifier] = 42;
+
+        c.async_subscribe(
+            subscribe_topic { "$share/test/#", {} }, sprops,
+            [&handlers_called, &c, expected_ec]
+            (error_code ec, std::vector<reason_code> rcs, suback_props) {
+                ++handlers_called;
+
+                BOOST_TEST(ec == expected_ec);
+                BOOST_TEST_REQUIRE(rcs.size() == 1u);
+                BOOST_TEST(rcs[0] == reason_codes::empty);
+
+                c.cancel();
+            }
+        );
+    };
+
+    run_test(std::move(broker_side), std::move(body), 1);
+}
+
+BOOST_FIXTURE_TEST_CASE(packet_too_large, shared_test_data) {
+    run_sub_validation_test(
+        prop::maximum_packet_size, 10, client::error::packet_too_large
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(subid_not_available, shared_test_data) {
+    run_sub_validation_test(
+        prop::subscription_identifier_available, 0,
+        client::error::subscription_identifier_not_available
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(shared_not_available, shared_test_data) {
+    run_sub_validation_test(
+        prop::shared_subscription_available, 0,
+        client::error::shared_subscription_not_available
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(wildcard_not_available, shared_test_data) {
+    run_sub_validation_test(
+        prop::wildcard_subscription_available, 0,
+        client::error::wildcard_subscription_not_available
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(unsubscribe_too_large, shared_test_data) {
+    connack_props props;
+    props[prop::maximum_packet_size] = 10;
+    auto connack = encoders::encode_connack(
+        false, reason_codes::success.value(), props
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms));
+
+    auto body = [this](client_type& c, int& handlers_called) {
+        c.async_unsubscribe(
+            unsub_topics, unsubscribe_props{},
+            [&handlers_called, &c]
+            (error_code ec, std::vector<reason_code> rcs, unsuback_props) {
+                ++handlers_called;
+
+                BOOST_TEST(ec == client::error::packet_too_large);
+                BOOST_TEST_REQUIRE(rcs.size() == 1u);
+                BOOST_TEST(rcs[0] == reason_codes::empty);
+
+                c.cancel();
+            }
+        );
+    };
+
+    run_test(std::move(broker_side), std::move(body), 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

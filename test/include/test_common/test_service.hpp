@@ -65,10 +65,16 @@ public:
         return _test_props[p];
     }
 
+    size_t max_packet_size() const {
+        return connack_property(prop::maximum_packet_size)
+            .value_or(::boost::mqtt5::detail::default_max_send_size);
+    }
+
     const auto& connack_properties() {
         return _test_props;
     }
 
+    bool was_connected() const { return true; }
 };
 
 

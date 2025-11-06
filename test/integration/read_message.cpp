@@ -20,7 +20,6 @@
 #include <string>
 
 #include "test_common/message_exchange.hpp"
-#include "test_common/test_service.hpp"
 #include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
@@ -152,7 +151,7 @@ BOOST_FIXTURE_TEST_CASE(receive_disconnect, shared_test_data) {
         .expect(connect)
             .complete_with(success, after(0ms))
             .reply_with(connack, after(0ms))
-        .send(disconnect, after(30ms))
+        .send(disconnect, after(50ms))
         .expect(connect)
             .complete_with(success, after(0ms))
             .reply_with(connack, after(0ms));
@@ -309,7 +308,7 @@ BOOST_DATA_TEST_CASE_F(
         .expect(connect1)
             .complete_with(success, after(1ms))
             .reply_with(connack, after(2ms))
-        .send(publish1, publish1, publish1, publish1, publish1, after(30ms));
+        .send(publish1, publish1, publish1, publish1, publish1, after(100ms));
 
     auto verify_fun = [&](
         error_code ec, std::string topic_, std::string payload_, publish_props
@@ -328,7 +327,7 @@ BOOST_FIXTURE_TEST_CASE(receive_multiple_packets_at_once, shared_test_data) {
         .expect(connect)
             .complete_with(success, after(1ms))
             .reply_with(connack, after(2ms))
-        .send(publish, publish, publish, publish, publish, after(30ms));
+        .send(publish, publish, publish, publish, publish, after(100ms));
 
     auto verify_fun = [&](
         error_code ec, std::string topic_, std::string payload_, publish_props
@@ -355,13 +354,13 @@ BOOST_FIXTURE_TEST_CASE(receive_multiple_packets_with_malformed, shared_test_dat
             .reply_with(connack, after(2ms))
         .send(
             publish, publish, std::string({ 0x00 }) /* malformed */,
-            ghost_publish, ghost_publish, after(30ms)
+            ghost_publish, ghost_publish, after(100ms)
         )
         .expect(encode_disconnect_with_rs("Malformed Packet received from the Server"))
         .expect(connect)
             .complete_with(success, after(1ms))
             .reply_with(connack, after(2ms))
-        .send(publish, after(60ms));
+        .send(publish, after(300ms));
 
     auto verify_fun = [&](
         error_code ec, std::string topic_, std::string payload_, publish_props

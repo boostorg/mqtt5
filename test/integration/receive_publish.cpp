@@ -21,7 +21,6 @@
 #include "test_common/message_exchange.hpp"
 #include "test_common/packet_util.hpp"
 #include "test_common/test_broker.hpp"
-#include "test_common/test_service.hpp"
 #include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;

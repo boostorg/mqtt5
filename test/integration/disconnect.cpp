@@ -281,9 +281,6 @@ BOOST_FIXTURE_TEST_CASE(omit_props, shared_test_data) {
 
     disconnect_props props;
     props[prop::reason_string] = std::string(50, 'a');
-    auto big_disconnect = encoders::encode_disconnect(
-        reason_codes::normal_disconnection.value(), props
-    );
 
     test::msg_exchange broker_side;
     broker_side
@@ -295,17 +292,14 @@ BOOST_FIXTURE_TEST_CASE(omit_props, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
-            timer.expires_after(50ms);
-            timer.async_wait([&](error_code) {
-                c.async_disconnect(
-                    disconnect_rc_e::normal_disconnection, props,
-                    [&](error_code ec) {
-                        handlers_called++;
-                        BOOST_TEST(!ec);
-                    }
-                );
-            });
+        [&](client_type& c, asio::steady_timer&) {
+            c.async_disconnect(
+                disconnect_rc_e::normal_disconnection, props,
+                [&](error_code ec) {
+                    handlers_called++;
+                    BOOST_TEST(!ec);
+                }
+            );
         }
     );
 

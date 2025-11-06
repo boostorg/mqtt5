@@ -21,7 +21,6 @@
 
 #include "test_common/message_exchange.hpp"
 #include "test_common/packet_util.hpp"
-#include "test_common/test_service.hpp"
 #include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
@@ -501,6 +500,84 @@ BOOST_FIXTURE_TEST_CASE(receive_pubrec_with_rc, shared_test_data) {
             BOOST_TEST(!ec);
             BOOST_TEST(rc == reason_codes::unspecified_error);
         }
+    );
+}
+
+template <prop::property_type p>
+void run_validation_test(
+    std::integral_constant<prop::property_type, p> prop,
+    prop::value_type_t<p> val, error_code expected_ec
+) {
+    auto shared_data = shared_test_data();
+
+    connack_props props;
+    props[prop::topic_alias_maximum] = 128;
+    props[prop] = val;
+    auto connack = encoders::encode_connack(
+        false, reason_codes::success.value(), props
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(shared_data.connect)
+            .complete_with(error_code {}, after(0ms))
+            .reply_with(connack, after(0ms))
+        ;
+
+    constexpr int expected_handlers_called = 1;
+    int handlers_called = 0;
+
+    asio::io_context ioc;
+    auto executor = ioc.get_executor();
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, executor, std::move(broker_side)
+    );
+
+    using client_type = mqtt_client<test::test_stream>;
+    client_type c(executor);
+    c.brokers("127.0.0.1").async_run(asio::detached);
+
+    publish_props pprops;
+    pprops[prop::topic_alias] = 12;
+
+    c.async_publish<qos_e::at_least_once>(
+        shared_data.topic, shared_data.payload, retain_e::yes, pprops,
+        [&handlers_called, &c, expected_ec]
+        (error_code ec, reason_code rc, puback_props) mutable {
+            ++handlers_called;
+            BOOST_TEST(ec == expected_ec);
+            BOOST_TEST(rc == reason_codes::empty);
+            c.cancel();
+        }
+    );
+
+    ioc.run_for(2s);
+    BOOST_TEST(handlers_called == expected_handlers_called);
+    BOOST_TEST(broker.received_all_expected());
+}
+
+BOOST_FIXTURE_TEST_CASE(packet_too_large, shared_test_data) {
+    run_validation_test(
+        prop::maximum_packet_size, 10, client::error::packet_too_large
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(qos_not_supported, shared_test_data) {
+    run_validation_test(
+        prop::maximum_qos, 0, client::error::qos_not_supported
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(retain_not_available, shared_test_data) {
+    run_validation_test(
+        prop::retain_available, 0, client::error::retain_not_available
+    );
+}
+
+BOOST_FIXTURE_TEST_CASE(topic_alias_maximum_reached, shared_test_data) {
+    run_validation_test(
+        prop::topic_alias_maximum, 10,
+        client::error::topic_alias_maximum_reached
     );
 }
 

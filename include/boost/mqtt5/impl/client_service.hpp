@@ -355,6 +355,11 @@ public:
             .value_or(_stream_context.mqtt_context().keep_alive);
     }
 
+    size_t max_packet_size() const {
+        return connack_property(prop::maximum_packet_size)
+            .value_or(default_max_send_size);
+    }
+
     void keep_alive(uint16_t seconds) {
         if (!is_open())
             _stream_context.mqtt_context().keep_alive = seconds;
@@ -398,6 +403,10 @@ public:
 
     bool is_open() const {
         return _stream.is_open();
+    }
+
+    bool was_connected() const {
+        return _stream.was_connected();
     }
 
     template <typename CompletionToken>
