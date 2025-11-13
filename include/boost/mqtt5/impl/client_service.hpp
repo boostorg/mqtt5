@@ -266,8 +266,8 @@ private:
 
     receive_channel _rec_channel;
 
-    asio::steady_timer _ping_timer;
-    asio::steady_timer _sentry_timer;
+    timer_type _ping_timer;
+    timer_type _sentry_timer;
 
     client_service(const client_service& other) :
         _executor(other._executor),

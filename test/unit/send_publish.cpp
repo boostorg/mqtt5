@@ -5,6 +5,10 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/packet_util.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
@@ -18,10 +22,6 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/packet_util.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -101,7 +101,7 @@ void run_test(
             }
         );
 
-    ioc.run_for(2s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -551,7 +551,7 @@ void run_validation_test(
         }
     );
 
-    ioc.run_for(2s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -619,7 +619,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_resending_publish, shared_test_data) {
     );
     cancel_signal.emit(asio::cancellation_type::total);
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -689,7 +689,7 @@ BOOST_FIXTURE_TEST_CASE(send_big_publish, shared_test_data) {
         }
     );
 
-    ioc.run_for(2s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }

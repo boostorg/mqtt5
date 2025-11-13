@@ -5,21 +5,20 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_broker.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
 #include <string>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_broker.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -52,14 +51,14 @@ void run_test(test::msg_exchange broker_side, TestCase&& test_case) {
         ioc, executor, std::move(broker_side)
     );
 
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     client_type c(executor);
     c.brokers("127.0.0.1,127.0.0.1") // to avoid reconnect backoff
         .async_run(asio::detached);
 
     test_case(c, timer);
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 
@@ -77,7 +76,7 @@ BOOST_FIXTURE_TEST_CASE(successful_disconnect, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
+        [&](client_type& c, test::test_timer& timer) {
             timer.expires_after(100ms);
             timer.async_wait([&](error_code) {
                 c.async_disconnect(
@@ -114,7 +113,7 @@ BOOST_FIXTURE_TEST_CASE(successful_disconnect_in_queue, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
+        [&](client_type& c, test::test_timer& timer) {
             timer.expires_after(50ms);
             timer.async_wait([&](error_code) {
                 c.async_publish<qos_e::at_most_once>(
@@ -150,7 +149,7 @@ BOOST_FIXTURE_TEST_CASE(disconnect_on_disconnected_client, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
+        [&](client_type& c, test::test_timer& timer) {
             timer.expires_after(50ms);
             timer.async_wait([&](error_code) {
                 c.async_disconnect(
@@ -177,7 +176,7 @@ BOOST_FIXTURE_TEST_CASE(disconnect_in_queue_on_disconnected_client, shared_test_
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
+        [&](client_type& c, test::test_timer& timer) {
             timer.expires_after(50ms);
             timer.async_wait([&](error_code) {
                 c.async_publish<qos_e::at_most_once>(
@@ -216,7 +215,7 @@ BOOST_FIXTURE_TEST_CASE(resend_terminal_disconnect, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer&) {
+        [&](client_type& c, test::test_timer&) {
             c.async_disconnect(
                 [&](error_code ec) {
                     handlers_called++;
@@ -258,7 +257,7 @@ BOOST_FIXTURE_TEST_CASE(dont_resend_non_terminal_disconnect, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer& timer) {
+        [&](client_type& c, test::test_timer& timer) {
             timer.expires_after(50ms);
             timer.async_wait([&](error_code) {
                 c.cancel();
@@ -292,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE(omit_props, shared_test_data) {
 
     run_test(
         std::move(broker_side),
-        [&](client_type& c, asio::steady_timer&) {
+        [&](client_type& c, test::test_timer&) {
             c.async_disconnect(
                 disconnect_rc_e::normal_disconnection, props,
                 [&](error_code ec) {
@@ -313,7 +312,7 @@ struct long_shutdown_stream : public test::test_stream {
 
 template <typename ShutdownHandler>
 void async_shutdown(long_shutdown_stream& stream, ShutdownHandler&& handler) {
-    auto timer = std::make_shared<asio::steady_timer>(stream.get_executor());
+    auto timer = std::make_shared<test::test_timer>(stream.get_executor());
     timer->expires_after(std::chrono::seconds(10));
     timer->async_wait(asio::consign(std::move(handler), std::move(timer)));
 }
@@ -340,7 +339,7 @@ BOOST_DATA_TEST_CASE_F(
         ioc, executor, std::move(broker_side)
     );
 
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     mqtt_client<long_shutdown_stream> c(executor);
     c.brokers("127.0.0.1")
         .async_run(asio::detached);
@@ -363,7 +362,7 @@ BOOST_DATA_TEST_CASE_F(
         signal.emit(asio::cancellation_type::all);
     });
 
-    ioc.run_for(6s);
+    broker.run(ioc);
 
     BOOST_TEST(broker.received_all_expected());
     BOOST_TEST(handlers_called == expected_handlers_called);

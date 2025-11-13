@@ -5,23 +5,22 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/packet_util.hpp"
+#include "test_common/test_broker.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/packet_util.hpp"
-#include "test_common/test_broker.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -91,7 +90,7 @@ void run_test(
         }
     );
 
-    ioc.run_for(3s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -206,7 +205,7 @@ BOOST_FIXTURE_TEST_CASE(receive_publish_properties, shared_test_data) {
         }
     );
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -469,7 +468,7 @@ BOOST_FIXTURE_TEST_CASE(receive_buffer_overflow, shared_test_data) {
     c.brokers("127.0.0.1")
         .async_run(asio::detached);
 
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     timer.expires_after(10s);
     timer.async_wait(
         [&](error_code) {
@@ -487,7 +486,7 @@ BOOST_FIXTURE_TEST_CASE(receive_buffer_overflow, shared_test_data) {
         }
     );
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }

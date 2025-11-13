@@ -5,12 +5,14 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -18,9 +20,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -130,7 +129,7 @@ BOOST_FIXTURE_TEST_CASE(publish_ordering_after_reconnect, shared_test_data) {
         }
     );
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -209,7 +208,7 @@ BOOST_FIXTURE_TEST_CASE(sub_unsub_ordering_after_reconnect, shared_test_data) {
         }
     );
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -274,7 +273,7 @@ BOOST_FIXTURE_TEST_CASE(throttling, shared_test_data) {
             }
         );
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -333,7 +332,7 @@ BOOST_FIXTURE_TEST_CASE(throttling_ordering, shared_test_data) {
         }
     );
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -377,7 +376,7 @@ BOOST_FIXTURE_TEST_CASE(prioritize_disconnect, shared_test_data) {
         .async_run(asio::detached);
 
     // give time to establish a connection
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     timer.expires_after(100ms);
     timer.async_wait([&](error_code) {
         c.async_publish<qos_e::at_least_once>(
@@ -407,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE(prioritize_disconnect, shared_test_data) {
         });
     });
 
-    ioc.run_for(2s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }

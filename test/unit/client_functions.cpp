@@ -5,6 +5,12 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/extra_deps.hpp"
+#include "test_common/message_exchange.hpp"
+#include "test_common/packet_util.hpp"
+#include "test_common/test_authenticators.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
@@ -13,7 +19,6 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/type_traits/remove_cv_ref.hpp>
 
@@ -21,12 +26,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-
-#include "test_common/extra_deps.hpp"
-#include "test_common/message_exchange.hpp"
-#include "test_common/packet_util.hpp"
-#include "test_common/test_authenticators.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 using namespace std::chrono_literals;
@@ -58,13 +57,13 @@ void run_test(
     c.brokers("127.0.0.1")
         .async_run(asio::detached);
 
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     timer.expires_after(700ms);
     timer.async_wait(
         [&c](error_code) { c.cancel(); }
     );
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 
@@ -302,7 +301,7 @@ void run_test_with_post_fun(
     c.brokers("127.0.0.1")
         .async_run(asio::detached);
 
-    asio::steady_timer timer(executor);
+    test::test_timer timer(executor);
     timer.expires_after(700ms);
     timer.async_wait(
         [&c, fun = std::forward<TestingClientFun>(client_fun)](error_code) {
@@ -311,7 +310,7 @@ void run_test_with_post_fun(
         }
     );
 
-    ioc.run();
+    broker.run(ioc);
 
     BOOST_TEST(broker.received_all_expected());
 }

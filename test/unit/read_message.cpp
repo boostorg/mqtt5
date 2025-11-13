@@ -5,22 +5,21 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
 #include <cstdint>
 #include <string>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -69,11 +68,11 @@ void test_receive_malformed_packet(
     c.brokers("127.0.0.1,127.0.0.1") // to avoid reconnect backoff
         .async_run(asio::detached);
 
-    asio::steady_timer timer(c.get_executor());
+    test::test_timer timer(c.get_executor());
     timer.expires_after(100ms);
     timer.async_wait([&c](error_code) { c.cancel(); });
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 
@@ -167,11 +166,11 @@ BOOST_FIXTURE_TEST_CASE(receive_disconnect, shared_test_data) {
     c.brokers("127.0.0.1,127.0.0.1") // to avoid reconnect backoff
         .async_run(asio::detached);
 
-    asio::steady_timer timer(c.get_executor());
+    test::test_timer timer(c.get_executor());
     timer.expires_after(100ms);
     timer.async_wait([&c](error_code) { c.cancel(); });
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 
@@ -216,7 +215,7 @@ BOOST_FIXTURE_TEST_CASE(receive_disconnect_while_reconnecting, shared_test_data)
         }
     );
 
-    ioc.run_for(1s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -253,7 +252,7 @@ void run_receive_test(
                 c.cancel();
         });
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }

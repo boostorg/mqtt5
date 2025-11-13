@@ -8,6 +8,8 @@
 #ifndef BOOST_MQTT5_TEST_TEST_SERVICE_HPP
 #define BOOST_MQTT5_TEST_TEST_SERVICE_HPP
 
+#include "test_broker.hpp"
+
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/mqtt5/impl/client_service.hpp>

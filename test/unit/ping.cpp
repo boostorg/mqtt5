@@ -5,6 +5,9 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
@@ -17,9 +20,6 @@
 #include <cstdint>
 #include <limits>
 #include <string>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -72,13 +72,13 @@ void run_test(
         .keep_alive(keep_alive)
         .async_run(asio::detached);
 
-    asio::steady_timer timer(c.get_executor());
+    test::test_timer timer(c.get_executor());
     timer.expires_after(cancel_timeout);
     timer.async_wait([&c](error_code) {
         c.cancel();
     });
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 

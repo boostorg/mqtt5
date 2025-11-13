@@ -5,12 +5,16 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/packet_util.hpp"
+#include "test_common/test_authenticators.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -18,12 +22,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/packet_util.hpp"
-#include "test_common/test_authenticators.hpp"
-#include "test_common/test_broker.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -87,7 +85,7 @@ void run_test(
 
     c.async_run(asio::detached);
 
-    asio::steady_timer timer(c.get_executor());
+    test::test_timer timer(c.get_executor());
     // wait until the connection is established
     timer.expires_after(20ms);
     timer.async_wait([&](error_code) {
@@ -97,7 +95,7 @@ void run_test(
         timer.async_wait([&c](error_code) { c.cancel(); });
     });
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 

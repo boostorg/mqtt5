@@ -5,6 +5,10 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/packet_util.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/types.hpp>
 
@@ -19,10 +23,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/packet_util.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -89,7 +89,7 @@ void run_test(
 
     test_body(c, handlers_called);
 
-    ioc.run_for(5s);
+    broker.run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }

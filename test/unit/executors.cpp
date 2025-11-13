@@ -5,6 +5,9 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/mqtt5/impl/codecs/message_encoders.hpp>
 
 #include <boost/asio/bind_executor.hpp>
@@ -12,7 +15,6 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/mqtt5.hpp>
 #include <boost/test/unit_test.hpp>
@@ -21,9 +23,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -205,7 +204,7 @@ void run_test(
         )
     );
 
-    ioc.run_for(500ms);
+    test::test_broker::run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
     BOOST_TEST(broker.received_all_expected());
 }
@@ -261,7 +260,7 @@ BOOST_AUTO_TEST_CASE(immediate_executor_async_publish) {
         "invalid/#", "", retain_e::no, publish_props {}, std::move(handler)
     );
 
-    ioc.run();
+    test::test_broker::run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -290,7 +289,7 @@ BOOST_AUTO_TEST_CASE(immediate_executor_async_subscribe) {
         { "+topic", subscribe_options {} }, subscribe_props{}, std::move(handler)
     );
 
-    ioc.run();
+    test::test_broker::run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -319,7 +318,7 @@ BOOST_AUTO_TEST_CASE(immediate_executor_async_unsubscribe) {
         "some/topic#", unsubscribe_props {}, std::move(handler)
     );
 
-    ioc.run();
+    test::test_broker::run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 

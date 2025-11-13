@@ -5,6 +5,9 @@
 // (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "test_common/message_exchange.hpp"
+#include "test_common/test_stream.hpp"
+
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/cancellation_signal.hpp>
@@ -12,15 +15,11 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/mqtt5.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <type_traits>
-
-#include "test_common/message_exchange.hpp"
-#include "test_common/test_stream.hpp"
 
 using namespace boost::mqtt5;
 
@@ -190,7 +189,7 @@ void run_cancel_op_test() {
 
     setup_cancel_op_test_case<op_type>(c, signal, handlers_called);
 
-    asio::steady_timer timer(c.get_executor());
+    test::test_timer timer(c.get_executor());
     timer.expires_after(std::chrono::milliseconds(100));
     timer.async_wait([&](error_code) {
         if constexpr (c_type == client_cancel)
@@ -199,7 +198,7 @@ void run_cancel_op_test() {
             signal.emit(asio::cancellation_type_t::terminal);
     });
 
-    ioc.run();
+    test::test_broker::run(ioc);
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -341,7 +340,7 @@ BOOST_FIXTURE_TEST_CASE(rerunning_the_client, shared_test_data) {
         asio::detached
     );
 
-    ioc.run();
+    broker.run(ioc);
     BOOST_TEST(broker.received_all_expected());
 }
 

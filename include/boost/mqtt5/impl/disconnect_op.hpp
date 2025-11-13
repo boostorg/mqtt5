@@ -28,7 +28,6 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/prepend.hpp>
-#include <boost/asio/steady_timer.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -185,7 +184,7 @@ class terminal_disconnect_op {
     static constexpr uint8_t seconds = 5;
 
     std::shared_ptr<client_service> _svc_ptr;
-    std::unique_ptr<asio::steady_timer> _timer;
+    std::unique_ptr<timer_type> _timer;
 
     using handler_type = Handler;
     handler_type _handler;
@@ -196,7 +195,7 @@ public:
         Handler&& handler
     ) :
         _svc_ptr(std::move(svc_ptr)),
-        _timer(new asio::steady_timer(_svc_ptr->get_executor())),
+        _timer(new timer_type(_svc_ptr->get_executor())),
         _handler(std::move(handler))
     {}
 
