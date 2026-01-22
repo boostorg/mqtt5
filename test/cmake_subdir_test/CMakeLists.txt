@@ -40,7 +40,6 @@ set(deps
   # logic # Beast dependency
   mp11
   optional
-  static_assert
   # static_string # Beast dependency
   # type_index # Beast dependency
   winapi
