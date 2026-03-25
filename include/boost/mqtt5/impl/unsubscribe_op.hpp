@@ -35,6 +35,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
 namespace boost::mqtt5::detail {
 
@@ -115,6 +116,13 @@ public:
             return complete_immediate(client::error::packet_too_large, packet_id);
 
         send_unsubscribe(std::move(unsubscribe));
+    }
+
+    void perform(
+        std::initializer_list<std::string> topics,
+        const unsubscribe_props& props
+    ) {
+        perform(std::vector(topics), props);
     }
 
     void send_unsubscribe(control_packet<allocator_type> unsubscribe) {

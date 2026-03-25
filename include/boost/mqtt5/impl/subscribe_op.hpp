@@ -35,6 +35,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
 namespace boost::mqtt5::detail {
 
@@ -119,6 +120,13 @@ public:
                 return complete_immediate(ec, packet_id);
 
         send_subscribe(std::move(subscribe));
+    }
+
+    void perform(
+        std::initializer_list<subscribe_topic> topics,
+        const subscribe_props& props
+    ) {
+        perform(std::vector(topics), props);
     }
 
     void send_subscribe(control_packet<allocator_type> subscribe) {

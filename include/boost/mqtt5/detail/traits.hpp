@@ -58,6 +58,19 @@ constexpr bool is_boost_iterator = is_specialization<
     boost::remove_cv_ref_t<T>, boost::iterator_range
 >;
 
+template <typename, typename, typename = void>
+constexpr bool is_container_of_impl = false;
+
+template <typename T, typename U>
+constexpr bool is_container_of_impl<T, U, std::void_t<typename T::value_type>> =
+    std::is_same_v<typename T::value_type, U
+>;
+
+template <typename T, typename U>
+constexpr bool is_container_of = is_container_of_impl<
+    boost::remove_cv_ref_t<T>, U
+>;
+
 } // end namespace boost::mqtt5::detail
 
 #endif // !BOOST_MQTT5_TRAITS_HPP

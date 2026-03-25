@@ -18,6 +18,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <initializer_list>
 
 namespace boost::mqtt5::encoders {
 
@@ -297,6 +298,14 @@ inline std::string encode_suback(
     return s;
 }
 
+inline std::string encode_suback(
+    uint16_t packet_id,
+    std::initializer_list<uint8_t> reason_codes,
+    const suback_props& props
+) {
+    return encode_suback(packet_id, std::vector(reason_codes), props);
+}
+
 inline std::string encode_unsubscribe(
     uint16_t packet_id,
     boost::span<const std::string> topics,
@@ -355,6 +364,14 @@ inline std::string encode_unsuback(
         s << basic::byte_(reason_code);
 
     return s;
+}
+
+inline std::string encode_unsuback(
+    uint16_t packet_id,
+    std::initializer_list<uint8_t> reason_codes,
+    const unsuback_props& props
+) {
+    return encode_unsuback(packet_id, std::vector(reason_codes), props);
 }
 
 inline std::string encode_pingreq() {

@@ -31,6 +31,7 @@
 #include <variant> // std::monostate
 #include <vector>
 #include <array>
+#include <initializer_list>
 
 namespace boost::mqtt5 {
 
@@ -578,11 +579,13 @@ public:
      *
      */
     template <
+        typename TopicSequence,
         typename CompletionToken =
-            typename asio::default_completion_token<executor_type>::type
+            typename asio::default_completion_token<executor_type>::type,
+        typename = std::enable_if_t<detail::is_container_of<TopicSequence, subscribe_topic>>
     >
     decltype(auto) async_subscribe(
-        boost::span<const subscribe_topic> topics,
+        const TopicSequence& topics,
         const subscribe_props& props,
         CompletionToken&& token = {}
     ) {
@@ -593,6 +596,74 @@ public:
             detail::initiate_async_subscribe(_impl), token,
             topics, props
         );
+    }
+
+    /**
+     * \brief Send a \__SUBSCRIBE\__ packet to Broker to create a Subscription
+     * to one or more Topics of interest.
+     *
+     * \details After the Subscription has been established, the Broker will send
+     * PUBLISH packets to the Client to forward Application Messages that were published
+     * to Topics that the Client subscribed to. The Application Messages can be received
+     * with \ref mqtt_client::async_receive function.
+     *
+     * \param topics A list of \ref subscribe_topic of interest.
+     * \param props An instance of \__SUBSCRIBE_PROPS\__.
+     * \param token Completion token that will be used to produce a
+     * completion handler. The handler will be invoked when the operation completes.
+     * On immediate completion, invocation of the handler will be performed in a manner
+     * equivalent to using \__ASYNC_IMMEDIATE\__.
+     *
+     * \par Handler signature
+     * The handler signature for this operation:
+     *    \code
+     *        void (
+     *            __ERROR_CODE__,    // Result of operation.
+     *            std::vector<__REASON_CODE__>,  // Vector of Reason Codes indicating
+     *                                           // the Subscription result for each Topic
+     *                                           // in the SUBSCRIBE packet.
+     *            __SUBACK_PROPS__,  // Properties received in the SUBACK packet.
+     *        )
+     *    \endcode
+     *
+     *    \par Completion condition
+     *    The asynchronous operation will complete when one of the following conditions is true:\n
+     *        - The Client has successfully sent a \__SUBSCRIBE\__ packet
+     *        and has received a \__SUBACK\__ response from the Broker.\n
+     *        - An error occurred. This is indicated by an associated \__ERROR_CODE\__ in the handler.\n
+     *
+     *    \par Error codes
+     *    The list of all possible error codes that this operation can finish with:\n
+     *        - `boost::system::errc::errc_t::success` \n
+     *        - `boost::asio::error::no_recovery` \n
+     *        - `boost::asio::error::operation_aborted` \n
+     *        - \ref boost::mqtt5::client::error::malformed_packet
+     *        - \ref boost::mqtt5::client::error::packet_too_large
+     *        - \ref boost::mqtt5::client::error::pid_overrun
+     *        - \ref boost::mqtt5::client::error::invalid_topic
+     *        - \ref boost::mqtt5::client::error::wildcard_subscription_not_available
+     *        - \ref boost::mqtt5::client::error::subscription_identifier_not_available
+     *        - \ref boost::mqtt5::client::error::shared_subscription_not_available
+     *
+     * Refer to the section on \__ERROR_HANDLING\__ to find the underlying causes for each error code.
+     * 
+     *    \par Per-Operation Cancellation
+     *    This asynchronous operation supports cancellation for the following \__CANCELLATION_TYPE\__ values:\n
+     *        - `cancellation_type::terminal` - invokes \ref mqtt_client::cancel \n
+     *        - `cancellation_type::partial` & `cancellation_type::total` - prevents potential resending of the \__SUBSCRIBE\__ packet \n
+     *
+     */
+    template <
+        typename CompletionToken =
+            typename asio::default_completion_token<executor_type>::type
+    >
+    decltype(auto) async_subscribe(
+        std::initializer_list<subscribe_topic> topics,
+        const subscribe_props& props,
+        CompletionToken&& token = {}
+    ) {
+        return async_subscribe(std::vector(topics), props,
+        std::forward<CompletionToken>(token));
     }
 
     /**
@@ -717,11 +788,13 @@ public:
      *
      */
     template <
+        typename TopicSequence,
         typename CompletionToken =
-            typename asio::default_completion_token<executor_type>::type
+            typename asio::default_completion_token<executor_type>::type,
+        typename = std::enable_if_t<detail::is_container_of<TopicSequence, std::string>>
     >
     decltype(auto) async_unsubscribe(
-        boost::span<const std::string> topics,
+        const TopicSequence& topics,
         const unsubscribe_props& props,
         CompletionToken&& token = {}
     ) {
@@ -732,6 +805,70 @@ public:
             detail::initiate_async_unsubscribe(_impl), token,
             topics, props
         );
+    }
+
+    /**
+     * \brief Send an \__UNSUBSCRIBE\__ packet to Broker to unsubscribe from one
+     * or more Topics.
+     *
+     * \note The Client may still receive residual Application Messages
+     * through the \ref mqtt_client::async_receive function
+     * from Topics the Client just unsubscribed to.
+     *
+     * \param topics List of Topics to unsubscribe from.
+     * \param props An instance of \__UNSUBSCRIBE_PROPS\__.
+     * \param token Completion token that will be used to produce a
+     * completion handler. The handler will be invoked when the operation completes.
+     * On immediate completion, invocation of the handler will be performed in a manner
+     * equivalent to using \__ASYNC_IMMEDIATE\__.
+     *
+     * \par Handler signature
+     * The handler signature for this operation:
+     *    \code
+     *        void (
+     *            __ERROR_CODE__, // Result of operation.
+     *            std::vector<__REASON_CODE__>,  // Vector of Reason Codes indicating
+     *                                           // the result of unsubscribe operation
+     *                                           // for each Topic in the UNSUBSCRIBE packet.
+     *            __UNSUBACK_PROPS__, // Properties received in the UNSUBACK packet.
+     *        )
+     *    \endcode
+     *
+     *    \par Completion condition
+     *    The asynchronous operation will complete when one of the following conditions is true:\n
+     *        - The Client has successfully sent an \__UNSUBSCRIBE\__ packet
+     *        and has received an \__UNSUBACK\__ response from the Broker.\n
+     *        - An error occurred. This is indicated by an associated \__ERROR_CODE\__ in the handler.\n
+     *
+     *    \par Error codes
+     *    The list of all possible error codes that this operation can finish with:\n
+     *        - `boost::system::errc::errc_t::success` \n
+     *        - `boost::asio::error::no_recovery` \n
+     *        - `boost::asio::error::operation_aborted` \n
+     *        - \ref boost::mqtt5::client::error::malformed_packet
+     *        - \ref boost::mqtt5::client::error::packet_too_large
+     *        - \ref boost::mqtt5::client::error::pid_overrun
+     *        - \ref boost::mqtt5::client::error::invalid_topic
+     *
+     * Refer to the section on \__ERROR_HANDLING\__ to find the underlying causes for each error code.
+     * 
+     *    \par Per-Operation Cancellation
+     *    This asynchronous operation supports cancellation for the following \__CANCELLATION_TYPE\__ values:\n
+     *        - `cancellation_type::terminal` - invokes \ref mqtt_client::cancel \n
+     *        - `cancellation_type::partial` & `cancellation_type::total` - prevents potential resending of the \__UNSUBSCRIBE\__ packet \n
+     *
+     */
+    template <
+        typename CompletionToken =
+            typename asio::default_completion_token<executor_type>::type
+    >
+    decltype(auto) async_unsubscribe(
+        std::initializer_list<std::string> topics,
+        const unsubscribe_props& props,
+        CompletionToken&& token = {}
+    ) {
+        return async_unsubscribe(std::vector(topics), props,
+        std::forward<CompletionToken>(token));
     }
 
     /**

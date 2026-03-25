@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(pid_overrun) {
         client_service_type, decltype(handler)
     > { svc_ptr, std::move(handler) }
     .perform(
-        std::vector<subscribe_topic>{ { "topic", { qos_e::exactly_once } } }, subscribe_props {}
+        { { "topic", { qos_e::exactly_once } } }, subscribe_props {}
     );
 
     ioc.poll();
