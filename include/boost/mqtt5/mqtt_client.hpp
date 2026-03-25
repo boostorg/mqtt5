@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <variant> // std::monostate
 #include <vector>
+#include <array>
 
 namespace boost::mqtt5 {
 
@@ -581,7 +582,7 @@ public:
             typename asio::default_completion_token<executor_type>::type
     >
     decltype(auto) async_subscribe(
-        const std::vector<subscribe_topic>& topics,
+        boost::span<const subscribe_topic> topics,
         const subscribe_props& props,
         CompletionToken&& token = {}
     ) {
@@ -658,7 +659,7 @@ public:
         CompletionToken&& token = {}
     ) {
         return async_subscribe(
-            std::vector<subscribe_topic> { topic }, props,
+            std::array<subscribe_topic, 1> { topic }, props,
             std::forward<CompletionToken>(token)
         );
     }
@@ -720,7 +721,8 @@ public:
             typename asio::default_completion_token<executor_type>::type
     >
     decltype(auto) async_unsubscribe(
-        const std::vector<std::string>& topics,    const unsubscribe_props& props,
+        boost::span<const std::string> topics,
+        const unsubscribe_props& props,
         CompletionToken&& token = {}
     ) {
         using Signature = void (
@@ -792,7 +794,7 @@ public:
         CompletionToken&& token = {}
     ) {
         return async_unsubscribe(
-            std::vector<std::string> { topic }, props,
+            std::array<std::string, 1> { topic }, props,
             std::forward<CompletionToken>(token)
         );
     }

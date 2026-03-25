@@ -29,6 +29,8 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/prepend.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -91,7 +93,7 @@ public:
     }
 
     void perform(
-        const std::vector<subscribe_topic>& topics,
+        boost::span<const subscribe_topic> topics,
         const subscribe_props& props
     ) {
         _num_topics = topics.size();
@@ -223,7 +225,7 @@ private:
     }
 
     static error_code validate_subscribe(
-        const std::vector<subscribe_topic>& topics,
+        boost::span<const subscribe_topic> topics,
         const subscribe_props& props, validation_context& ctx
     ) {
         error_code ec;
@@ -345,7 +347,7 @@ public:
     template <typename Handler>
     void operator()(
         Handler&& handler,
-        const std::vector<subscribe_topic>& topics, const subscribe_props& props
+        span<const subscribe_topic> topics, const subscribe_props& props
     ) {
         detail::subscribe_op { _svc_ptr, std::move(handler) }
             .perform(topics, props);

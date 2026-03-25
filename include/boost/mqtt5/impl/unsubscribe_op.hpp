@@ -29,6 +29,8 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/prepend.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -87,7 +89,7 @@ public:
     }
 
     void perform(
-        const std::vector<std::string>& topics,
+        boost::span<const std::string> topics,
         const unsubscribe_props& props
     ) {
         _num_topics = topics.size();
@@ -196,7 +198,7 @@ public:
 private:
 
     static error_code validate_unsubscribe(
-        const std::vector<std::string>& topics,
+        boost::span<const std::string> topics,
         const unsubscribe_props& props
     ) {
         for (const auto& topic : topics)
@@ -268,7 +270,7 @@ public:
     template <typename Handler>
     void operator()(
         Handler&& handler,
-        const std::vector<std::string>& topics, const unsubscribe_props& props
+        boost::span<const std::string> topics, const unsubscribe_props& props
     ) {
         detail::unsubscribe_op { _svc_ptr, std::move(handler) }
             .perform(topics, props);

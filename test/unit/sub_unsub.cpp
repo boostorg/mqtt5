@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE(receive_malformed_suback, shared_test_data) {
 BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_suback, shared_test_data) {
     // packets
     auto malformed_suback = encoders::encode_suback(
-        1, { uint8_t(0x04) }, suback_props {}
+        1, std::vector{ uint8_t(0x04) }, suback_props {}
     );
 
     auto disconnect = encoders::encode_disconnect(
@@ -229,7 +229,7 @@ BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_suback, shared_test_data) {
 BOOST_FIXTURE_TEST_CASE(mismatched_num_of_suback_rcs, shared_test_data) {
     // packets
     auto malformed_suback = encoders::encode_suback(
-        1, { uint8_t(0x00), uint8_t(0x00) }, suback_props {}
+        1, std::vector{ uint8_t(0x00), uint8_t(0x00) }, suback_props {}
     );
 
     auto disconnect = encoders::encode_disconnect(
@@ -334,7 +334,7 @@ BOOST_FIXTURE_TEST_CASE(receive_malformed_unsuback, shared_test_data) {
 BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_unsuback, shared_test_data) {
     // packets
     auto malformed_unsuback = encoders::encode_unsuback(
-        1, { uint8_t(0x04) }, unsuback_props {}
+        1, std::vector{ uint8_t(0x04) }, unsuback_props {}
     );
 
     auto disconnect = encoders::encode_disconnect(
@@ -368,7 +368,7 @@ BOOST_FIXTURE_TEST_CASE(receive_invalid_rc_in_unsuback, shared_test_data) {
 BOOST_FIXTURE_TEST_CASE(mismatched_num_of_unsuback_rcs, shared_test_data) {
     // packets
     auto malformed_unsuback = encoders::encode_unsuback(
-        1, { uint8_t(0x00), uint8_t(0x00)}, unsuback_props {}
+        1, std::vector{ uint8_t(0x00), uint8_t(0x00)}, unsuback_props {}
     );
 
     auto disconnect = encoders::encode_disconnect(

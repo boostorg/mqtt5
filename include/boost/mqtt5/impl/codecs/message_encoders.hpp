@@ -12,11 +12,12 @@
 
 #include <boost/mqtt5/impl/codecs/base_encoders.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace boost::mqtt5::encoders {
 
@@ -231,7 +232,7 @@ inline std::string encode_pubcomp(
 
 inline std::string encode_subscribe(
     uint16_t packet_id,
-    const std::vector<subscribe_topic>& topics,
+    boost::span<const subscribe_topic> topics,
     const subscribe_props& props
 ) {
 
@@ -270,7 +271,7 @@ inline std::string encode_subscribe(
 
 inline std::string encode_suback(
     uint16_t packet_id,
-    const std::vector<uint8_t>& reason_codes,
+    boost::span<const uint8_t> reason_codes,
     const suback_props& props
 ) {
 
@@ -298,7 +299,7 @@ inline std::string encode_suback(
 
 inline std::string encode_unsubscribe(
     uint16_t packet_id,
-    const std::vector<std::string>& topics,
+    boost::span<const std::string> topics,
     const unsubscribe_props& props
 ) {
 
@@ -330,7 +331,7 @@ inline std::string encode_unsubscribe(
 
 inline std::string encode_unsuback(
     uint16_t packet_id,
-    const std::vector<uint8_t>& reason_codes,
+    boost::span<const uint8_t> reason_codes,
     const unsuback_props& props
 ) {
 

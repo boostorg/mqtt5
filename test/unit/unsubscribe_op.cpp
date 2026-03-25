@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE(pid_overrun) {
     detail::unsubscribe_op<
         client_service_type, decltype(handler)
     > { svc_ptr, std::move(handler) }
-    .perform({ "topic" }, unsubscribe_props {});
+    .perform(std::vector<std::string>{ "topic" }, unsubscribe_props {});
 
     ioc.poll();
     BOOST_TEST(handlers_called == expected_handlers_called);
