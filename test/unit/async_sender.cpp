@@ -337,6 +337,48 @@ BOOST_FIXTURE_TEST_CASE(throttling_ordering, shared_test_data) {
     BOOST_TEST(broker.received_all_expected());
 }
 
+BOOST_FIXTURE_TEST_CASE(throttling_with_non_throttled_request, shared_test_data) {
+   constexpr int expected_handlers_called = 1;
+    int handlers_called = 0;
+
+    auto publish_qos0 = encoders::encode_publish(
+        0, topic, payload, qos_e::at_most_once, retain_e::no, dup_e::no, {}
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(1ms))
+            .reply_with(connack_rm, after(2ms))
+        .expect(publish_qos0)
+            .complete_with(success, after(1ms));
+
+    asio::io_context ioc;
+    auto executor = ioc.get_executor();
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, executor, std::move(broker_side)
+    );
+
+    using client_type = mqtt_client<test::test_stream>;
+    client_type c(executor);
+
+    c.brokers("127.0.0.1")
+        .async_run(asio::detached);
+
+    c.async_publish<qos_e::at_most_once>(
+        topic, payload, retain_e::no, publish_props {},
+        [&](error_code ec) {
+            ++handlers_called;
+            BOOST_TEST(!ec);
+            c.cancel();
+        }
+    );
+
+    broker.run(ioc);
+    BOOST_TEST(handlers_called == expected_handlers_called);
+    BOOST_TEST(broker.received_all_expected());
+}
+
 BOOST_FIXTURE_TEST_CASE(prioritize_disconnect, shared_test_data) {
     constexpr int expected_handlers_called = 3;
     int handlers_called = 0;
