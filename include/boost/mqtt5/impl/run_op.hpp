@@ -8,6 +8,8 @@
 #ifndef BOOST_MQTT5_RUN_OP_HPP
 #define BOOST_MQTT5_RUN_OP_HPP
 
+#include <boost/mqtt5/error.hpp>
+
 #include <boost/mqtt5/detail/cancellable_handler.hpp>
 #include <boost/mqtt5/detail/control_packet.hpp>
 #include <boost/mqtt5/detail/internal_types.hpp>
@@ -72,6 +74,11 @@ public:
 
     void perform() {
         namespace asioex = boost::asio::experimental;
+
+        if (_svc_ptr->is_open())
+            return _handler.complete_immediate(
+                error_code(client::error::already_running)
+            );
 
         _svc_ptr->_stream.open();
         _svc_ptr->_rec_channel.reset();

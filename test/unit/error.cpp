@@ -32,7 +32,8 @@ struct client_error_codes {
         client::error::topic_alias_maximum_reached,
         client::error::wildcard_subscription_not_available,
         client::error::subscription_identifier_not_available,
-        client::error::shared_subscription_not_available
+        client::error::shared_subscription_not_available,
+        client::error::already_running,
     };
 };
 

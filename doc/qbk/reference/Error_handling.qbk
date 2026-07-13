@@ -86,6 +86,11 @@ may complete with, along with the reasons for their occurrence.
         However, the Server does not support Shared Subscriptions.
         This error code is exclusive to completion handlers associated with [refmem mqtt_client async_subscribe] calls.
     ]]
+    [[`boost::mqtt5::client::error::already_running`] [
+        The Client is already running. [refmem mqtt_client async_run] was called while
+        the Client was already running as a result of a previous [refmem mqtt_client async_run] call.
+        This error code is exclusive to completion handlers associated with [refmem mqtt_client async_run] calls.
+    ]]
 ]
 
 [endsect]

@@ -199,10 +199,13 @@ public:
      * `boost::asio::error::operation_aborted` when the client is cancelled by calling
      * \ref async_disconnect, \ref cancel, destruction or
      * if a non-recoverable error happens during a connection attempt (e.g. access denied).
+     * The operation will complete immediately with \ref client::error::already_running
+     * if the Client is already running.
      *
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::asio::error::operation_aborted`\n
+     *        - \ref client::error::already_running\n
      *
      *    \par Per-Operation Cancellation
      *    This asynchronous operation supports cancellation for the following \__CANCELLATION_TYPE\__ values:\n

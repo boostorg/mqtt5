@@ -293,8 +293,8 @@ BOOST_DATA_TEST_CASE_F(
     );
 
     const uint32_t max_packet_size = (std::max)(
-        publish1.size(),
-        publish1.size() * max_packet_size_multiplier + max_packet_size_offset
+        (uint32_t)publish1.size(),
+        (uint32_t)publish1.size() * max_packet_size_multiplier + max_packet_size_offset
     );
     connect_props cprops;
     cprops[prop::maximum_packet_size] = max_packet_size;
