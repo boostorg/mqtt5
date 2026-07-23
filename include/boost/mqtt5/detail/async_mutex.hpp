@@ -45,7 +45,7 @@ private:
         Handler _handler;
     public:
         tracked_op(Handler&& h, const Executor& ex) :
-            _executor(tracking_executor(h, ex)), _handler(std::move(h))
+            _executor(boost::mqtt5::detail::tracking_executor(h, ex)), _handler(std::move(h))
         {}
 
         tracked_op(tracked_op&&) = default;

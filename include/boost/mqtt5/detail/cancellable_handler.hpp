@@ -31,7 +31,7 @@ public:
     cancellable_handler(Handler&& handler, const Executor& ex) :
         _executor(ex),
         _handler(std::move(handler)),
-        _handler_ex(tracking_executor(_handler, ex)),
+        _handler_ex(boost::mqtt5::detail::tracking_executor(_handler, ex)),
         _cancellation_state(
             asio::get_associated_cancellation_slot(_handler),
             asio::enable_total_cancellation {},
