@@ -37,10 +37,10 @@ inline std::optional<fixed_header> decode_fixed_header(
 using packet_id = uint16_t;
 
 inline std::optional<packet_id> decode_packet_id(
-    byte_citer& it
+    byte_citer& it, const byte_citer last
 ) {
     constexpr auto packet_id_ = basic::word_;
-    return type_parse(it, it + sizeof(uint16_t), packet_id_);
+    return type_parse(it, last, packet_id_);
 }
 
 using connect_message = std::tuple<

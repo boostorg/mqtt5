@@ -316,6 +316,9 @@ struct prop_parser {
         if (!basic::varint_.parse(iter, last, props_length))
             return false;
 
+        if (props_length < 0 || props_length > std::distance(iter, last))
+            return false;
+
         const auto scoped_last = iter + props_length;
         // attr = Props{};
 

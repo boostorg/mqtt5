@@ -164,6 +164,41 @@ BOOST_FIXTURE_TEST_CASE(malformed_connack_varlen, shared_test_data) {
     run_unit_test(std::move(broker_side), std::move(handler));
 }
 
+BOOST_FIXTURE_TEST_CASE(connack_varlen_smaller_than_bytes_read, shared_test_data) {
+    // Remaining Length (2) is smaller than the number of variable header bytes
+    // that were already read along with the fixed header
+    auto malformed_connack = std::string({ 0x20, 0x02, 0x00, 0x00, 0x00 });
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(2ms))
+            .reply_with(malformed_connack, after(3ms));
+
+    auto handler = [&](error_code ec) {
+        BOOST_TEST(ec == client::error::malformed_packet);
+    };
+
+    run_unit_test(std::move(broker_side), std::move(handler));
+}
+
+BOOST_FIXTURE_TEST_CASE(connack_larger_than_max_packet_size, shared_test_data) {
+    // Remaining Length is 268'435'455
+    auto malformed_connack = std::string({ 0x20, -1 /* 0xFF */, -1, -1, 0x7F });
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(2ms))
+            .reply_with(malformed_connack, after(3ms));
+
+    auto handler = [&](error_code ec) {
+        BOOST_TEST(ec == client::error::malformed_packet);
+    };
+
+    run_unit_test(std::move(broker_side), std::move(handler));
+}
+
 BOOST_FIXTURE_TEST_CASE(malformed_connack_rc, shared_test_data) {
     // packets
     auto malformed_connack = encoders::encode_connack(true, uint8_t(0x04), {});

@@ -108,6 +108,14 @@ BOOST_AUTO_TEST_CASE(packet_larger_than_allowed) {
     );
 }
 
+BOOST_AUTO_TEST_CASE(receive_reply_with_truncated_packet_id) {
+    test_receive_malformed_packet(
+        std::string({ 0x40, 0x01, 0x00 }), // PUBACK with a 1-byte Packet Identifier
+        reason_codes::malformed_packet,
+        "Malformed Packet received from the Server"
+    );
+}
+
 BOOST_AUTO_TEST_CASE(receive_malformed_publish) {
     test_receive_malformed_packet(
         std::string({ 0x30, 1, -1 }),

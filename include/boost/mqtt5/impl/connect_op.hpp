@@ -279,11 +279,22 @@ public:
             return do_shutdown(asio::error::try_again);
 
         auto varlen_sz = std::distance(_buffer_ptr->cbegin() + 1, varlen_ptr);
-        auto remain_len = *varlen -
+        auto body_already_read =
             std::distance(varlen_ptr, _buffer_ptr->cbegin() + num_read);
 
-        if (num_read + remain_len > _buffer_ptr->size())
-            _buffer_ptr->resize(num_read + remain_len);
+        if (*varlen < body_already_read)
+            return do_shutdown(client::error::malformed_packet);
+
+        size_t remain_len = static_cast<size_t>(*varlen - body_already_read);
+        size_t total_len = num_read + remain_len;
+
+        auto max_packet_size = _ctx.co_props[prop::maximum_packet_size]
+            .value_or(default_max_recv_size);
+        if (total_len > max_packet_size)
+            return do_shutdown(client::error::malformed_packet);
+
+        if (total_len > _buffer_ptr->size())
+            _buffer_ptr->resize(total_len);
 
         auto buff = asio::buffer(_buffer_ptr->data() + num_read, remain_len);
         auto first = _buffer_ptr->cbegin() + varlen_sz + 1;
