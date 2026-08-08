@@ -39,24 +39,33 @@ inline int pop_front_unichar(std::string_view& s) {
         (n == 0xC0 || n == 0xD0) && s.size() > 1 &&
         is_continuation_byte(s[1])
     ) {
-        ch = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
-        s.remove_prefix(2);
+        int decoded = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
+        if (decoded >= 0x80) {
+            ch = decoded;
+            s.remove_prefix(2);
+        }
     }
     else if (
         (n == 0xE0) && s.size() > 2 &&
         is_continuation_byte(s[1]) && is_continuation_byte(s[2])
     ) {
-        ch = ((s[0] & 0x1F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-        s.remove_prefix(3);
+        int decoded = ((s[0] & 0x1F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+        if (decoded >= 0x800) {
+            ch = decoded;
+            s.remove_prefix(3);
+        }
     }
     else if (
         (n == 0xF0) && s.size() > 3 &&
         is_continuation_byte(s[1]) && is_continuation_byte(s[2]) &&
         is_continuation_byte(s[3])
     ) {
-        ch = ((s[0] & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
+        int decoded = ((s[0] & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
             ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
-        s.remove_prefix(4);
+        if (decoded >= 0x10000) {
+            ch = decoded;
+            s.remove_prefix(4);
+        }
     }
 
     return ch;
