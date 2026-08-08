@@ -63,6 +63,12 @@ BOOST_AUTO_TEST_CASE(utf8_string_validation) {
     BOOST_CHECK(validate_mqtt_utf8(to_str(0x1F5FE)) == validation_result::valid);
 
     BOOST_CHECK(validate_mqtt_utf8("\xC3z") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xE2\x28\xA1") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF0\x28\x8C\xBC") == validation_result::invalid);
+
+    BOOST_CHECK(validate_mqtt_utf8("\xC1\x81") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xE0\x81\x81") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF0\x80\x81\x81") == validation_result::invalid);
 }
 
 BOOST_AUTO_TEST_CASE(topic_filter_validation) {
