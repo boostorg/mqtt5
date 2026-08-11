@@ -21,6 +21,10 @@ enum class validation_result : uint8_t {
     invalid
 };
 
+inline bool is_continuation_byte(char c) {
+    return (c & 0xC0) == 0x80;
+}
+
 inline int pop_front_unichar(std::string_view& s) {
     // assuming that s.length() is > 0
 
@@ -31,26 +35,44 @@ inline int pop_front_unichar(std::string_view& s) {
         ch = s[0];
         s.remove_prefix(1);
     }
-    else if ((n == 0xC0 || n == 0xD0) && s.size() > 1) {
-        ch = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
-        s.remove_prefix(2);
+    else if (
+        (n == 0xC0 || n == 0xD0) && s.size() > 1 &&
+        is_continuation_byte(s[1])
+    ) {
+        int decoded = ((s[0] & 0x1F) << 6) | (s[1] & 0x3F);
+        if (decoded >= 0x80) {
+            ch = decoded;
+            s.remove_prefix(2);
+        }
     }
-    else if ((n == 0xE0) && s.size() > 2) {
-        ch = ((s[0] & 0x1F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-        s.remove_prefix(3);
+    else if (
+        (n == 0xE0) && s.size() > 2 &&
+        is_continuation_byte(s[1]) && is_continuation_byte(s[2])
+    ) {
+        int decoded = ((s[0] & 0x1F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+        if (decoded >= 0x800) {
+            ch = decoded;
+            s.remove_prefix(3);
+        }
     }
-    else if ((n == 0xF0) && s.size() > 3) {
-        ch = ((s[0] & 0x1F) << 18) | ((s[1] & 0x3F) << 12) |
+    else if (
+        (n == 0xF0) && s.size() > 3 &&
+        is_continuation_byte(s[1]) && is_continuation_byte(s[2]) &&
+        is_continuation_byte(s[3])
+    ) {
+        int decoded = ((s[0] & 0x07) << 18) | ((s[1] & 0x3F) << 12) |
             ((s[2] & 0x3F) << 6) | (s[3] & 0x3F);
-        s.remove_prefix(4);
+        if (decoded >= 0x10000) {
+            ch = decoded;
+            s.remove_prefix(4);
+        }
     }
 
     return ch;
 }
 
 inline validation_result validate_mqtt_utf8_char(int c) {
-    constexpr int fe_flag = 0xFE;
-    constexpr int ff_flag = 0xFF;
+    constexpr int noncharacter_flag = 0xFFFE;
 
     constexpr int multi_lvl_wildcard = '#';
     constexpr int single_lvl_wildcard = '+';
@@ -62,8 +84,7 @@ inline validation_result validate_mqtt_utf8_char(int c) {
         (c < 0x007F || c > 0x009F) && // U+007F...0+009F control characters
         (c < 0xD800 || c > 0xDFFF) && // U+D800...U+DFFF surrogates
         (c < 0xFDD0 || c > 0xFDEF) && // U+FDD0...U+FDEF non-characters
-        (c & fe_flag) != fe_flag && // non-characters
-        (c & ff_flag) != ff_flag
+        (c & noncharacter_flag) != noncharacter_flag // non-characters
     )
         return validation_result::valid;
 
