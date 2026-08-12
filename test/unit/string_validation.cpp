@@ -69,6 +69,24 @@ BOOST_AUTO_TEST_CASE(utf8_string_validation) {
     BOOST_CHECK(validate_mqtt_utf8("\xC1\x81") == validation_result::invalid);
     BOOST_CHECK(validate_mqtt_utf8("\xE0\x81\x81") == validation_result::invalid);
     BOOST_CHECK(validate_mqtt_utf8("\xF0\x80\x81\x81") == validation_result::invalid);
+
+    BOOST_CHECK(validate_mqtt_utf8(to_str(0x10000)) == validation_result::valid);
+    BOOST_CHECK(validate_mqtt_utf8(to_str(0x10FFFD)) == validation_result::valid);
+    BOOST_CHECK(validate_mqtt_utf8(to_str(0x10FFFE)) == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8(to_str(0x10FFFF)) == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8(to_str(0x110000)) == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF5\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF7\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF7\xBF\xBF\xBF") == validation_result::invalid);
+
+    BOOST_CHECK(validate_mqtt_utf8("\xF8\x90\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xF8\x90\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFB\xBF\xBF\xBF") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFC\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFC\x84\x80\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFD\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFE\x80\x80\x80") == validation_result::invalid);
+    BOOST_CHECK(validate_mqtt_utf8("\xFF\x80\x80\x80") == validation_result::invalid);
 }
 
 BOOST_AUTO_TEST_CASE(topic_filter_validation) {

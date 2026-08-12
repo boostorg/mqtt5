@@ -101,7 +101,7 @@ inline validation_result validate_shared_topic_filter(std::string_view str) {
     str.remove_prefix(shared_sub_prefix.size());
 
     size_t share_name_end = str.find_first_of('/');
-    if (share_name_end == std::string::npos)
+    if (share_name_end == std::string_view::npos)
         return validation_result::invalid;
 
     validation_result result;
