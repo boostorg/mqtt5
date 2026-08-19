@@ -239,12 +239,34 @@ public:
 /// \cond internal
     template <typename Func>
     using is_visitor = std::conjunction<
-        std::is_invocable_r<bool, Func, decltype(Ps), value_type_t<Ps>&>...
+        std::is_invocable_r<
+            bool, Func,
+            const std::integral_constant<property_type, Ps>&, value_type_t<Ps>&
+        >...
+    >;
+
+    template <typename Func>
+    using is_const_visitor = std::conjunction<
+        std::is_invocable_r<
+            bool, Func, const std::integral_constant<property_type, Ps>&,
+            const value_type_t<Ps>&
+        >...
     >;
 
     template <typename Func>
     using is_nothrow_visitor = std::conjunction<
-        std::is_nothrow_invocable<Func, decltype(Ps), value_type_t<Ps>&>...
+        std::is_nothrow_invocable_r<
+            bool, Func, const std::integral_constant<property_type, Ps>&,
+            value_type_t<Ps>&
+        >...
+    >;
+
+    template <typename Func>
+    using is_nothrow_const_visitor = std::conjunction<
+        std::is_nothrow_invocable_r<
+            bool, Func, const std::integral_constant<property_type, Ps>&,
+            const value_type_t<Ps>&
+        >...
     >;
 /// \endcond
 
@@ -262,10 +284,10 @@ public:
     */
     template <
         typename Func,
-        std::enable_if_t<is_visitor<Func>::value, bool> = true
+        std::enable_if_t<is_const_visitor<Func>::value, bool> = true
     >
     constexpr bool visit(Func&& func)
-    const noexcept (is_nothrow_visitor<Func>::value) {
+    const noexcept (is_nothrow_const_visitor<Func>::value) {
         return std::apply(
             [&func](const auto&... props) {
                 auto pc = [&func](const auto& px) {
