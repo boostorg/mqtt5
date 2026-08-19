@@ -519,6 +519,50 @@ BOOST_FIXTURE_TEST_CASE(wildcard_not_available, shared_test_data) {
     );
 }
 
+BOOST_FIXTURE_TEST_CASE(unsubscribe_wildcard_topic_filters, shared_test_data) {
+    std::vector<std::string> wildcard_topics = {
+        "topic/#", "topic/+/sensor", "$share/grp/topic/#"
+    };
+    std::vector<uint8_t> wildcard_rcs = {
+        uint8_t(0x00), uint8_t(0x00), uint8_t(0x00)
+    };
+
+    auto wildcard_unsubscribe = encoders::encode_unsubscribe(
+        1, wildcard_topics, unsubscribe_props {}
+    );
+    auto wildcard_unsuback = encoders::encode_unsuback(
+        1, wildcard_rcs, unsuback_props {}
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(0ms))
+            .reply_with(connack, after(0ms))
+        .expect(wildcard_unsubscribe)
+            .complete_with(success, after(0ms))
+            .reply_with(wildcard_unsuback, after(0ms));
+
+    auto body = [&wildcard_topics](client_type& c, int& handlers_called) {
+        c.async_unsubscribe(
+            wildcard_topics, unsubscribe_props {},
+            [&handlers_called, &c]
+            (error_code ec, std::vector<reason_code> rcs, unsuback_props) {
+                ++handlers_called;
+
+                BOOST_TEST(!ec);
+                BOOST_TEST_REQUIRE(rcs.size() == 3u);
+                for (const auto& rc : rcs)
+                    BOOST_TEST(rc == reason_codes::success);
+
+                c.cancel();
+            }
+        );
+    };
+
+    run_test(std::move(broker_side), std::move(body), 1);
+}
+
 BOOST_FIXTURE_TEST_CASE(unsubscribe_too_large, shared_test_data) {
     connack_props props;
     props[prop::maximum_packet_size] = 10;

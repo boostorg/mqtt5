@@ -200,7 +200,7 @@ private:
         const unsubscribe_props& props
     ) {
         for (const auto& topic : topics)
-            if (validate_topic_filter(topic) != validation_result::valid)
+            if (validate_topic_filter(topic) == validation_result::invalid)
                 return client::error::invalid_topic;
 
         const auto& user_properties = props[prop::user_property];
