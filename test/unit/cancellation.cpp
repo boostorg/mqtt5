@@ -15,6 +15,7 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/mqtt5.hpp>
 #include <boost/test/unit_test.hpp>
@@ -272,6 +273,176 @@ struct shared_test_data {
 
 using test::after;
 using namespace std::chrono_literals;
+
+BOOST_FIXTURE_TEST_CASE(publish_queued_after_terminal_cancel, shared_test_data) {
+    constexpr int expected_handlers_called = 2;
+    int handlers_called = 0;
+
+    // packets
+    auto publish_qos0 = encoders::encode_publish(
+        0, topic, payload, qos_e::at_most_once, retain_e::no, dup_e::no, {}
+    );
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(1ms))
+            .reply_with(connack, after(2ms))
+        .expect(publish_qos0)
+            .complete_with(success, after(1ms));
+
+    asio::io_context ioc;
+    auto executor = ioc.get_executor();
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, executor, std::move(broker_side)
+    );
+
+    mqtt_client<test::test_stream> c(executor);
+    c.brokers("127.0.0.1", 1883)
+        .async_run(asio::detached);
+
+    asio::cancellation_signal cancel_first;
+
+    test::test_timer timer(executor);
+    timer.expires_after(50ms);
+    timer.async_wait([&](error_code) {
+        asio::post(executor, [&] {
+            c.async_publish<qos_e::at_most_once>(
+                topic, payload, retain_e::no, publish_props {},
+                asio::bind_cancellation_slot(
+                    cancel_first.slot(),
+                    [&handlers_called](error_code ec) {
+                        ++handlers_called;
+                        BOOST_TEST(ec == asio::error::operation_aborted);
+                    }
+                )
+            );
+        });
+        asio::post(executor, [&] {
+            cancel_first.emit(asio::cancellation_type_t::terminal);
+        });
+        asio::post(executor, [&] {
+            c.async_publish<qos_e::at_most_once>(
+                topic, payload, retain_e::no, publish_props {},
+                [&handlers_called](error_code ec) {
+                    ++handlers_called;
+                    BOOST_TEST(ec == asio::error::operation_aborted);
+                }
+            );
+        });
+    });
+
+    broker.run(ioc);
+    BOOST_TEST(handlers_called == expected_handlers_called);
+    BOOST_TEST(broker.received_all_expected());
+}
+
+BOOST_FIXTURE_TEST_CASE(buffered_server_disconnect_after_cancel, shared_test_data) {
+    constexpr int expected_handlers_called = 2;
+    int handlers_called = 0;
+
+    // packets
+    auto server_disconnect = encoders::encode_disconnect(uint8_t(0x00), {});
+
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(1ms))
+            .reply_with(connack, after(2ms))
+        .expect(publish_qos1)
+            .complete_with(success, after(1ms))
+            .reply_with(puback, server_disconnect, after(2ms));
+
+    asio::io_context ioc;
+    auto executor = ioc.get_executor();
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, executor, std::move(broker_side)
+    );
+
+    mqtt_client<test::test_stream> c(executor);
+    c.brokers("127.0.0.1", 1883);
+
+    c.async_run([&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(ec == asio::error::operation_aborted);
+    });
+
+    c.async_publish<qos_e::at_least_once>(
+        topic, payload, retain_e::no, publish_props {},
+        [&](error_code ec, reason_code rc, puback_props) {
+            ++handlers_called;
+            BOOST_TEST(!ec);
+            BOOST_TEST(rc == reason_codes::success);
+            c.cancel();
+        }
+    );
+
+    broker.run(ioc);
+    BOOST_TEST(handlers_called == expected_handlers_called);
+    BOOST_TEST(broker.received_all_expected());
+}
+
+BOOST_AUTO_TEST_CASE(ops_on_non_running_client) {
+    constexpr int expected_handlers_called = 5;
+    int handlers_called = 0;
+
+    asio::io_context ioc;
+    client_type c(ioc);
+    c.brokers("127.0.0.1", 1883);
+
+    c.async_publish<qos_e::at_most_once>(
+        "topic", "payload", retain_e::no, publish_props {},
+        [&handlers_called](error_code ec) {
+            ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+        }
+    );
+
+    c.async_subscribe(
+        subscribe_topic { "topic", subscribe_options {} }, subscribe_props {},
+        [&handlers_called](
+            error_code ec, std::vector<reason_code> rcs, suback_props
+        ) {
+            ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+            BOOST_TEST_REQUIRE(rcs.size() == 1u);
+            BOOST_TEST(rcs[0] == reason_codes::empty);
+        }
+    );
+
+    c.async_unsubscribe(
+        "topic", unsubscribe_props {},
+        [&handlers_called](
+            error_code ec, std::vector<reason_code> rcs, unsuback_props
+        ) {
+            ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+            BOOST_TEST_REQUIRE(rcs.size() == 1u);
+            BOOST_TEST(rcs[0] == reason_codes::empty);
+        }
+    );
+
+    c.async_receive(
+        [&handlers_called](
+            error_code ec, std::string t, std::string p, publish_props
+        ) {
+            ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+            BOOST_TEST(t == "");
+            BOOST_TEST(p == "");
+        }
+    );
+
+    c.async_disconnect(
+        [&handlers_called](error_code ec) {
+            ++handlers_called;
+            BOOST_TEST(ec == asio::error::operation_aborted);
+        }
+    );
+
+    ioc.run();
+    BOOST_TEST(handlers_called == expected_handlers_called);
+}
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 

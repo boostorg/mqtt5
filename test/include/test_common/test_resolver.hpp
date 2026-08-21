@@ -24,6 +24,7 @@ private:
 
 public:
     static constexpr std::string_view invalid_host = "example.invalid";
+    static constexpr std::string_view unrecoverable_host = "unrecoverable.invalid";
 
     explicit test_resolver(executor_type ex) : _ex(std::move(ex)) {}
 
@@ -38,6 +39,8 @@ public:
 
         if (host == invalid_host)
             ec = asio::error::host_not_found;
+        else if (host == unrecoverable_host)
+            ec = asio::error::no_recovery;
         else
             results = results_type::create(
                 asio::ip::tcp::endpoint(asio::ip::make_address_v4("127.0.0.1"), 1883),

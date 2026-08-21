@@ -12,8 +12,8 @@ may complete with, along with the reasons for their occurrence.
 [table:error_codes Error codes
     [[Error code] [Cause]]
     [[`boost::system::errc::errc_t::success`] [The operation completed successfully.]]
-    [[`boost::asio::error::opreation_aborted`] [
-        The operation has been cancelled. 
+    [[`boost::asio::error::operation_aborted`] [
+        The operation has been cancelled or was initiated while the Client was not running.
         The cancellation of the operation can be triggered by invoking either [refmem mqtt_client cancel]
         or [refmem mqtt_client async_disconnect]. Furthermore, if a cancellation slot has been associated
         with the __CompletionToken__ provided and the corresponding cancellation signal is emitted,

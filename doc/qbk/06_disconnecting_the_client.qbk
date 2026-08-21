@@ -21,12 +21,27 @@ then close the connection and cancel all outstanding asynchronous operations (eq
 [important Regardless of the method used to stop the __Client__, it is recommended to ensure that all the previous asynchronous operations are
 completed. Otherwise, they *will be cancelled*.]
 
-Invoking [refmem mqtt_client cancel] or [refmem mqtt_client async_disconnect] will result in a clean and graceful shutdown process.
-This ensures that all resources are properly released and all asynchronous operations are 
-completed [footnote All outstanding operations will complete with error code `boost::asio::error::operation_aborted`.].
-Consequently, the execution context (__IOC__) will stop due to a lack of work.
+[refmem mqtt_client cancel] performs an immediate local shutdown. [refmem mqtt_client async_disconnect] performs
+a graceful MQTT shutdown if it successfully sends the __DISCONNECT__ packet, followed by the same local cleanup.
+In both cases, operations still pending on that run complete with
+`boost::asio::error::operation_aborted` and the Client's resources are released. If the __Client__ was the only
+source of work, the execution context (__IOC__) will stop due to a lack of work.
 
 [note The __Client__'s destructor will also call [refmem mqtt_client cancel]. ]
+
+[heading Calls made after stopping the Client]
+
+Both [refmem mqtt_client cancel] and [refmem mqtt_client async_disconnect] immediately leave the `mqtt_client`
+object in a stopped, reusable state. Communication operations initiated through that object after either call
+complete with `boost::asio::error::operation_aborted` until [refmem mqtt_client async_run] is invoked again.
+They are not queued for a later restart.
+
+The operations that belonged to the previous run continue only for as long as needed to shut that run down.
+[refmem mqtt_client cancel] cancels them immediately. [refmem mqtt_client async_disconnect] instead keeps the
+previous connection alive for up to `5 seconds` while it attempts to send the __DISCONNECT__ packet. A later call
+to [refmem mqtt_client cancel] applies to the current state of the `mqtt_client` object and does not shorten that
+already-started disconnect attempt. To cancel the disconnect attempt itself, associate a cancellation slot with
+the [refmem mqtt_client async_disconnect] completion token and emit a terminal cancellation signal.
 
 The following code snippet will showcase a scenario of disconnecting the __Client__ and its interaction with other
 asynchronous operations.
@@ -92,11 +107,13 @@ In this case, the proper way to disconnect would be to call [refmem mqtt_client 
 
 [section:reusing_the_client Restarting the Client After Disconnection]
 
-Once the __Client__ has been successfully stopped, reactivating it is straightforward and requires invoking [refmem mqtt_client async_run].
-This method can be called right after initiating [refmem mqtt_client async_disconnect], without waiting for it to complete.
-
+Restarting a __Client__ is straightforward and requires invoking [refmem mqtt_client async_run].
 The __Client__ is configurable again in the interval between stopping and restarting.
 See [link mqtt5.getting_started.configuration Configuring Your MQTT Connection] for more information.
+
+Because [refmem mqtt_client async_disconnect] immediately makes the `mqtt_client` object reusable, configuration
+changes and the next [refmem mqtt_client async_run] apply to a new run; they do not affect the connection that is
+still completing its disconnect attempt.
 
 ```
 int main() {

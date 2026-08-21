@@ -68,6 +68,8 @@ It is important to note that these configurations apply to every Broker listed i
 To modify any configuration parameters, you must first stop the __Client__ using [refmem mqtt_client cancel] or [refmem mqtt_client async_disconnect].
 Afterwards, you can re-apply the configurations and restart the __Client__ with [refmem mqtt_client async_run].
 
+[warning Configuration functions have no effect while the __Client__ is running. They are not queued for later application.]
+
 [endsect] [/configuration]
 
 [section:establishing_a_connection Establishing a Connection]

@@ -95,6 +95,9 @@ BOOST_FIXTURE_TEST_CASE(multiple_hosts, shared_test_data) {
             BOOST_TEST(ap.path == "/~path1");
 
             std::tie(ec, eps, ap) = co_await ep.async_next_endpoint(use_nothrow_awaitable);
+            BOOST_TEST(ec == asio::error::host_not_found);
+
+            std::tie(ec, eps, ap) = co_await ep.async_next_endpoint(use_nothrow_awaitable);
             BOOST_TEST(ec == success);
             BOOST_TEST(!eps.empty());
             BOOST_TEST(ap.host == "localhost");

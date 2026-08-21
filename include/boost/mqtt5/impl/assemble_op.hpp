@@ -128,6 +128,9 @@ public:
         on_read, error_code ec, size_t bytes_read,
         CompletionCondition cc
     ) {
+        if (!_svc.is_open())
+            return complete(asio::error::operation_aborted, 0, {}, {});
+
         if (ec == asio::error::try_again) {
             _svc.update_session_state();
             _svc._async_sender.resend();

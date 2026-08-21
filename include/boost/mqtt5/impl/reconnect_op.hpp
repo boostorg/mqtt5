@@ -150,14 +150,18 @@ public:
         on_next_endpoint, error_code ec,
         epoints eps, authority_path ap
     ) {
-        // the two error codes below are the only possible codes
-        // that may be returned from async_next_endpoint
+        // async_next_endpoint may return operation_aborted, try_again when
+        // the server list is exhausted, or any error the resolver produced
+        // for the current server
 
         if (ec == asio::error::operation_aborted || !_owner.is_open())
             return complete(asio::error::operation_aborted);
 
         if (ec == asio::error::try_again)
             return backoff_and_reconnect();
+
+        if (ec)
+            return do_reconnect();
 
         connect(eps.cbegin(), std::move(ap));
     }

@@ -117,7 +117,7 @@ public:
         if (!resolve_ec)
             return complete(error_code {}, std::move(epts), std::move(ap));
 
-        perform();
+        return complete(resolve_ec, {}, {});
     }
 
 private:

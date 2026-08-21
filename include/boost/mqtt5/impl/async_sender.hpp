@@ -161,6 +161,15 @@ public:
             auto handler, self_type& self, const BufferType& buffer,
             serial_num_t serial_num, unsigned flags
         ) {
+            if (!self._svc.is_open())
+                return asio::post(
+                    self._svc.get_executor(),
+                    asio::prepend(
+                        std::move(handler),
+                        error_code(asio::error::operation_aborted)
+                    )
+                );
+
             self._write_queue.emplace_back(
                 asio::buffer(buffer), serial_num, flags, std::move(handler)
             );

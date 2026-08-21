@@ -23,7 +23,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
+#include <functional>
 #include <memory>
+#include <string_view>
 
 using namespace boost::mqtt5;
 using namespace std::chrono_literals;
@@ -146,6 +148,102 @@ BOOST_AUTO_TEST_CASE(connect_to_first_localhost) {
 BOOST_AUTO_TEST_CASE(connect_to_second_localhost) {
     // connect to second in the resolver list
     run_connect_to_localhost_test(3);
+}
+
+BOOST_AUTO_TEST_CASE(failover_after_unrecoverable_resolve_error) {
+    using test::after;
+    error_code success {};
+
+    const std::string connect = encoders::encode_connect(
+        "", std::nullopt, std::nullopt, 60, false, test::dflt_cprops, std::nullopt
+    );
+    const std::string connack = encoders::encode_connack(
+        true, reason_codes::success.value(), {}
+    );
+
+    constexpr int expected_handlers_called = 1;
+    int handlers_called = 0;
+
+    asio::io_context ioc;
+    test::msg_exchange broker_side;
+    broker_side
+        .expect(connect)
+            .complete_with(success, after(2ms))
+            .reply_with(connack, after(4ms));
+
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, ioc.get_executor(), std::move(broker_side)
+    );
+
+    auto stream_ctx = stream_context(std::monostate {});
+    auto log = detail::log_invoke<noop_logger>();
+    auto auto_stream = astream(ioc.get_executor(), stream_ctx, log);
+    auto_stream.brokers("unrecoverable.invalid,localhost", 1883);
+
+    auto handler = [&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(!ec);
+    };
+
+    test_tcp_stream::succeed_after() = 0;
+    detail::reconnect_op(auto_stream, std::move(handler))
+        .perform(auto_stream.stream_pointer());
+
+    broker.run(ioc);
+    BOOST_TEST(expected_handlers_called == handlers_called);
+    BOOST_TEST(broker.received_all_expected());
+}
+
+struct resolve_hook_logger {
+    std::function<void (error_code)>* hook;
+
+    void at_resolve(
+        error_code ec, std::string_view, std::string_view,
+        const asio::ip::tcp::resolver::results_type&
+    ) {
+        (*hook)(ec);
+    }
+};
+
+BOOST_AUTO_TEST_CASE(stop_resolving_when_stream_closed) {
+    constexpr int expected_handlers_called = 1;
+    int handlers_called = 0;
+    int resolve_attempts = 0;
+
+    using logger_type = resolve_hook_logger;
+    using hooked_astream = test::test_autoconnect_stream<
+        underlying_stream, stream_context, logger_type
+    >;
+
+    asio::io_context ioc;
+    auto& broker = asio::make_service<test::test_broker>(
+        ioc, ioc.get_executor(), test::msg_exchange {}
+    );
+
+    std::function<void (error_code)> hook;
+    auto stream_ctx = stream_context(std::monostate {});
+    auto log = detail::log_invoke<logger_type>(logger_type { &hook });
+    auto auto_stream = hooked_astream(ioc.get_executor(), stream_ctx, log);
+    auto_stream.brokers("example.invalid,example.invalid,127.0.0.1", 1883);
+
+    hook = [&](error_code) {
+        if (++resolve_attempts == 1)
+            auto_stream.close();
+    };
+
+    auto handler = [&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(ec == asio::error::operation_aborted);
+    };
+
+    test_tcp_stream::succeed_after() = 0;
+    detail::reconnect_op(auto_stream, std::move(handler))
+        .perform(auto_stream.stream_pointer());
+
+    broker.run(ioc);
+    BOOST_TEST(expected_handlers_called == handlers_called);
+    BOOST_TEST(resolve_attempts == 1);
+    BOOST_TEST(broker.received_all_expected());
 }
 
 BOOST_AUTO_TEST_SUITE_END();

@@ -49,6 +49,16 @@ namespace asio = boost::asio;
  * Shared objects: unsafe. \n
  * This class is <b>not thread-safe</b>.
  * The application must also ensure that all asynchronous operations are performed within the same implicit or explicit strand.
+ *
+ * \par Operational state
+ * A newly constructed or stopped Client is not running. Call \ref async_run
+ * before initiating communication operations. Operations such as publishing,
+ * subscribing, receiving, or disconnecting that are initiated while the Client
+ * is not running complete with `boost::asio::error::operation_aborted`.
+ *
+ * Configuration functions have no effect while the Client is running. They must
+ * be called before \ref async_run, or after invoking \ref cancel or
+ * \ref async_disconnect and before the Client is started again.
  */
 template <
     typename StreamType,
@@ -226,11 +236,14 @@ public:
     /**
      * \brief Cancel all asynchronous operations. This function has terminal effects.
      *
-     * \details All outstanding operations will complete
-     * with `boost::asio::error::operation_aborted`.
+     * \details The Client immediately enters the stopped state. All operations
+     * still pending on the current run will complete with
+     * `boost::asio::error::operation_aborted`. Communication operations initiated
+     * after this call also complete with `boost::asio::error::operation_aborted`
+     * until \ref async_run is called again.
      *
      * \attention This function has terminal effects and will close the Client.
-     * The Client cannot be used before calling \ref async_run again.
+     * The Client cannot be used for communication before calling \ref async_run again.
      */
     void cancel() {
         auto impl = _impl;
@@ -245,10 +258,9 @@ public:
      * after the Network Connection is closed and it is not
      * closed normally.
      *
-     * \attention This function takes action when the client is in a non-operational state,
-     * meaning the \ref async_run function has not been invoked.
-     * Furthermore, you can use this function after the \ref cancel function has been called,
-     * before the \ref async_run function is invoked again.
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      */
     mqtt_client& will(will will) {
         _impl->will(std::move(will));
@@ -261,10 +273,9 @@ public:
      * \details Credentials consist of a unique Client Identifier and, optionally,
      * a User Name and Password.
      *
-     * \attention This function takes action when the client is in a non-operational state,
-     * meaning the \ref async_run function has not been invoked.
-     * Furthermore, you can use this function after the \ref cancel function has been called,
-     * before the \ref async_run function is invoked again.
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      */
     mqtt_client& credentials(
         std::string client_id,
@@ -290,10 +301,9 @@ public:
      * \param default_port The default port to connect to in case the port is not
      * explicitly specified in the `hosts` list.
      *
-     * \attention This function takes action when the client is in a non-operational state,
-     * meaning the \ref async_run function has not been invoked.
-     * Furthermore, you can use this function after the \ref cancel function has been called,
-     * before the \ref async_run function is invoked again.
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      *
      * \par Example
      * Some valid `hosts` string:
@@ -317,10 +327,9 @@ public:
      * \param authenticator Object that will be stored (move-constructed or by reference)
      * and used for authentication. It needs to satisfy \__Authenticator\__ concept.
      *
-     * \attention This function takes action when the client is in a non-operational state,
-     * meaning the \ref async_run function has not been invoked.
-     * Furthermore, you can use this function after the \ref cancel function has been called,
-     * before the \ref async_run function is invoked again.
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      *
      */
     template <typename Authenticator>
@@ -346,10 +355,9 @@ public:
      * \note If the Server sends a \__SERVER_KEEP_ALIVE\__,
      * the Client will send a \__PINGREQ\__ packet every \__SERVER_KEEP_ALIVE\__ seconds.
      *
-     * \attention This function takes action when the client is in a non-operational state,
-     * meaning the \ref async_run function has not been invoked.
-     * Furthermore, you can use this function after the \ref cancel function has been called,
-     * before the \ref async_run function is invoked again.
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      *
      */
     mqtt_client& keep_alive(uint16_t seconds) {
@@ -360,6 +368,11 @@ public:
     /**
      * \brief Assign \__CONNECT_PROPS\__ that will be sent in a \__CONNECT\__ packet.
      * \param props \__CONNECT_PROPS\__ sent in a \__CONNECT\__ packet.
+     *
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
+     *
      * \see See \__CONNECT_PROPS\__ for all eligible properties.
      */
     mqtt_client& connect_properties(connect_props props) {
@@ -377,6 +390,10 @@ public:
      * client.connect_property(prop::session_expiry_interval, 40); // ok
      * client.connect_property(prop::reason_string, "reason"); // does not compile, not a CONNECT prop!
      * \endcode
+     *
+     * \attention This function has no effect while the Client is running. Call it
+     * before \ref async_run, or after \ref cancel or \ref async_disconnect and
+     * before invoking \ref async_run again.
      *
      * \see See \__CONNECT_PROPS\__ for all eligible properties.
      */
@@ -806,8 +823,7 @@ public:
      * Calling this function will attempt to receive an Application Message
      * from internal storage.
      *
-     * \note It is only recommended to call this function if you have established
-     * a successful Subscription to a Topic using the \ref async_subscribe function.
+     * \see \ref mqtt_client::async_subscribe
      *
      * \param token Completion token that will be used to produce a
      * completion handler. The handler will be invoked when the operation completes.
@@ -861,6 +877,15 @@ public:
      * with a Reason Code describing the reason for disconnection.
      * If the \__DISCONNECT\__ packet is successfully transmitted,
      * or if `5 seconds` elapsed without a successful send, the Client will terminate the connection.
+     *
+     * This call immediately leaves the `mqtt_client` object in a stopped, reusable
+     * state while the disconnect operation continues on the previous connection.
+     * Communication operations initiated after this call complete with
+     * `boost::asio::error::operation_aborted` until \ref async_run is called again.
+     * Calling \ref cancel afterwards affects the current state of the `mqtt_client`;
+     * it does not shorten this disconnect operation. To cancel this operation,
+     * associate a cancellation slot with its completion token and emit a terminal
+     * cancellation signal.
      *
      * \attention This function has terminal effects and will close the Client.
      * See \ref mqtt_client::cancel.
@@ -926,6 +951,15 @@ public:
      * with a Reason Code describing the reason for disconnection.
      * If the \__DISCONNECT\__ packet is successfully transmitted,
      * or if `5 seconds` elapsed without a successful send, the Client will terminate the connection.
+     *
+     * This call immediately leaves the `mqtt_client` object in a stopped, reusable
+     * state while the disconnect operation continues on the previous connection.
+     * Communication operations initiated after this call complete with
+     * `boost::asio::error::operation_aborted` until \ref async_run is called again.
+     * Calling \ref cancel afterwards affects the current state of the `mqtt_client`;
+     * it does not shorten this disconnect operation. To cancel this operation,
+     * associate a cancellation slot with its completion token and emit a terminal
+     * cancellation signal.
      *
      * \attention This function has terminal effects and will close the Client.
      * See \ref mqtt_client::cancel.

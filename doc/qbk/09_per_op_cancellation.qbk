@@ -37,6 +37,9 @@ and emitting a terminal cancellation signal.
 Executing this sequence effectively results in the immediate cancellation of the entire client operation,
 mirroring the outcome of invoking [refmem mqtt_client cancel] directly.
 
+Once the terminal signal is emitted, the __Client__ is stopped. Any operation initiated afterwards completes with
+`boost::asio::error::operation_aborted`.
+
 If a total or partial cancellation signal were issued instead of a terminal one, the implications would be less severe. 
 In such cases, the cancellation would specifically target resending the __PUBLISH__ packet,
 preventing it from being retransmitted should the client reconnect during the ongoing operation.

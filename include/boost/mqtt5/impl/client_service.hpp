@@ -282,6 +282,7 @@ private:
         _sentry_timer(_executor)
     {
         _stream.clone_endpoints(other._stream);
+        _rec_channel.close();
     }
 
 public:
@@ -300,7 +301,9 @@ public:
         _rec_channel(ex, (std::numeric_limits<size_t>::max)()),
         _ping_timer(ex),
         _sentry_timer(ex)
-    {}
+    {
+        _rec_channel.close();
+    }
 
     executor_type get_executor() const noexcept {
         return _executor;
@@ -517,8 +520,29 @@ public:
     decltype(auto) async_wait_reply(
         control_code_e code, uint16_t packet_id, CompletionToken&& token
     ) {
-        return _replies.async_wait_reply(
-            code, packet_id, std::forward<CompletionToken>(token)
+        using Signature = void (error_code, byte_citer, byte_citer);
+
+        auto initiation = [](
+            auto handler, self_type& self,
+            control_code_e code, uint16_t packet_id
+        ) {
+            if (!self.is_open())
+                return asio::post(
+                    self._executor,
+                    asio::prepend(
+                        std::move(handler),
+                        error_code(asio::error::operation_aborted),
+                        byte_citer {}, byte_citer {}
+                    )
+                );
+
+            self._replies.async_wait_reply(
+                code, packet_id, std::move(handler)
+            );
+        };
+
+        return asio::async_initiate<CompletionToken, Signature>(
+            initiation, token, std::ref(*this), code, packet_id
         );
     }
 
