@@ -197,15 +197,16 @@ public:
      * \par Completion condition
      * The asynchronous operation will complete with
      * `boost::asio::error::operation_aborted` when the client is cancelled by calling
-     * \ref async_disconnect, \ref cancel, destruction or
-     * if a non-recoverable error happens during a connection attempt (e.g. access denied).
+     * \ref async_disconnect, \ref cancel or destruction.
      * The operation will complete immediately with \ref client::error::already_running
-     * if the Client is already running.
+     * if the Client is already running, or with \ref client::error::no_brokers
+     * if no valid Broker was assigned using \ref brokers.
      *
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::asio::error::operation_aborted`\n
-     *        - \ref client::error::already_running\n
+     *        - \ref client::error::already_running \n
+     *        - \ref client::error::no_brokers \n
      *
      *    \par Per-Operation Cancellation
      *    This asynchronous operation supports cancellation for the following \__CANCELLATION_TYPE\__ values:\n
@@ -490,7 +491,6 @@ public:
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::system::errc::errc_t::success` \n
      *        - `boost::asio::error::operation_aborted` \n
-     *        - `boost::asio::error::no_recovery` \n
      *        - \ref boost::mqtt5::client::error::malformed_packet
      *        - \ref boost::mqtt5::client::error::packet_too_large
      *        - \ref boost::mqtt5::client::error::pid_overrun
@@ -561,7 +561,6 @@ public:
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::system::errc::errc_t::success` \n
-     *        - `boost::asio::error::no_recovery` \n
      *        - `boost::asio::error::operation_aborted` \n
      *        - \ref boost::mqtt5::client::error::malformed_packet
      *        - \ref boost::mqtt5::client::error::packet_too_large
@@ -634,7 +633,6 @@ public:
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::system::errc::errc_t::success` \n
-     *        - `boost::asio::error::no_recovery` \n
      *        - `boost::asio::error::operation_aborted` \n
      *        - \ref boost::mqtt5::client::error::malformed_packet
      *        - \ref boost::mqtt5::client::error::packet_too_large
@@ -703,7 +701,6 @@ public:
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::system::errc::errc_t::success` \n
-     *        - `boost::asio::error::no_recovery` \n
      *        - `boost::asio::error::operation_aborted` \n
      *        - \ref boost::mqtt5::client::error::malformed_packet
      *        - \ref boost::mqtt5::client::error::packet_too_large
@@ -771,7 +768,6 @@ public:
      *    \par Error codes
      *    The list of all possible error codes that this operation can finish with:\n
      *        - `boost::system::errc::errc_t::success` \n
-     *        - `boost::asio::error::no_recovery` \n
      *        - `boost::asio::error::operation_aborted` \n
      *        - \ref boost::mqtt5::client::error::malformed_packet
      *        - \ref boost::mqtt5::client::error::packet_too_large

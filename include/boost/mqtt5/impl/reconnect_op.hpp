@@ -150,17 +150,14 @@ public:
         on_next_endpoint, error_code ec,
         epoints eps, authority_path ap
     ) {
-        // the three error codes below are the only possible codes
-        // that may be returned from async_next_endpont
+        // the two error codes below are the only possible codes
+        // that may be returned from async_next_endpoint
 
         if (ec == asio::error::operation_aborted || !_owner.is_open())
             return complete(asio::error::operation_aborted);
 
         if (ec == asio::error::try_again)
             return backoff_and_reconnect();
-
-        if (ec == asio::error::host_not_found)
-            return complete(asio::error::no_recovery);
 
         connect(eps.cbegin(), std::move(ap));
     }

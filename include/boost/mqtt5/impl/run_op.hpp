@@ -80,6 +80,11 @@ public:
                 error_code(client::error::already_running)
             );
 
+        if (!_svc_ptr->_stream.has_brokers())
+            return _handler.complete_immediate(
+                error_code(client::error::no_brokers)
+            );
+
         _svc_ptr->_stream.open();
         _svc_ptr->_rec_channel.reset();
 

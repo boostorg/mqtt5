@@ -104,6 +104,10 @@ public:
         _endpoints.brokers(std::move(hosts), default_port);
     }
 
+    bool has_brokers() const noexcept {
+        return _endpoints.has_brokers();
+    }
+
     void clone_endpoints(const autoconnect_stream& other) {
         _endpoints.clone_servers(other._endpoints);
     }

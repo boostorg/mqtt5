@@ -81,6 +81,34 @@ BOOST_FIXTURE_TEST_CASE(async_run_while_running, shared_test_data) {
     BOOST_TEST(broker.received_all_expected());
 }
 
+BOOST_AUTO_TEST_CASE(async_run_without_brokers) {
+    constexpr int expected_handlers_called = 3;
+    int handlers_called = 0;
+
+    asio::io_context ioc;
+    client_type c(ioc.get_executor());
+
+    c.async_run([&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(ec == client::error::no_brokers);
+    });
+
+    c.brokers("", 1883);
+    c.async_run([&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(ec == client::error::no_brokers);
+    });
+
+    c.brokers("127.0.0.1:", 1883);
+    c.async_run([&handlers_called](error_code ec) {
+        ++handlers_called;
+        BOOST_TEST(ec == client::error::no_brokers);
+    });
+
+    ioc.run();
+    BOOST_TEST(handlers_called == expected_handlers_called);
+}
+
 template <typename TestingClientFun>
 void run_test(
     test::msg_exchange broker_side, TestingClientFun&& client_fun

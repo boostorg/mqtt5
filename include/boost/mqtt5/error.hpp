@@ -100,6 +100,10 @@ enum class error : int {
     /** \brief The Client is already running because \ref mqtt_client::async_run
         was already called */
     already_running,
+
+    /** \brief There are no valid Brokers to connect to because
+        \ref mqtt_client::brokers was not called or was given no valid Broker */
+    no_brokers,
 };
 
 
@@ -132,6 +136,8 @@ inline std::string client_error_to_string(error err) {
             return "The Server does not support Shared Subscriptions";
         case error::already_running:
             return "The Client is already running";
+        case error::no_brokers:
+            return "There are no valid Brokers to connect to";
         default:
             return "Unknown client error";
     }

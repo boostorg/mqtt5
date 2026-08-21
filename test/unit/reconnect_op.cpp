@@ -148,26 +148,4 @@ BOOST_AUTO_TEST_CASE(connect_to_second_localhost) {
     run_connect_to_localhost_test(3);
 }
 
-BOOST_AUTO_TEST_CASE(no_servers) {
-    constexpr int expected_handlers_called = 1;
-    int handlers_called = 0;
-
-    asio::io_context ioc;
-    auto stream_ctx = stream_context(std::monostate{});
-    auto log = detail::log_invoke<noop_logger>();
-    auto auto_stream = astream(ioc.get_executor(), stream_ctx, log);
-    auto_stream.brokers("", 1883);
-
-    auto handler = [&handlers_called](error_code ec) {
-        ++handlers_called;
-        BOOST_TEST(ec == asio::error::no_recovery);
-    };
-
-    detail::reconnect_op(auto_stream, std::move(handler))
-        .perform(auto_stream.stream_pointer());
-
-    ioc.poll();
-    BOOST_TEST(expected_handlers_called == handlers_called);
-}
-
 BOOST_AUTO_TEST_SUITE_END();

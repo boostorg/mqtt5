@@ -84,9 +84,6 @@ public:
                 "The packet size is greater than Maximum Packet Size"
             );
 
-        if (ec == asio::error::no_recovery)
-            _svc_ptr->cancel();
-
         if (ec)
             return complete();
 

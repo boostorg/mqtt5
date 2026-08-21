@@ -19,11 +19,6 @@ may complete with, along with the reasons for their occurrence.
         with the __CompletionToken__ provided and the corresponding cancellation signal is emitted,
         the operation will also finish with this error code (see __ASIO_PER_OP_CANCELLATION__).
     ]]
-    [[`boost::asio::no_recovery`] [
-        An non-recoverable error occurred during the attempt by the [reflink2 mqtt_client `mqtt_client`]
-        to establish a connection with the Server. The cause of this error may be attributed to the connection 
-        related parameters used during the initialization of the [reflink2 mqtt_client `mqtt_client`].
-    ]]
     [[`boost::mqtt5::client::error::malformed_packet`][
         The Client has attempted to send a packet that does not conform to the specification.
         This issue can arise from improperly formed UTF-8 encoded strings.
@@ -89,6 +84,12 @@ may complete with, along with the reasons for their occurrence.
     [[`boost::mqtt5::client::error::already_running`] [
         The Client is already running. [refmem mqtt_client async_run] was called while
         the Client was already running as a result of a previous [refmem mqtt_client async_run] call.
+        This error code is exclusive to completion handlers associated with [refmem mqtt_client async_run] calls.
+    ]]
+    [[`boost::mqtt5::client::error::no_brokers`] [
+        There are no valid Brokers to connect to. Either [refmem mqtt_client brokers] was never called,
+        or the given list contained no valid Broker address. Note that [refmem mqtt_client brokers]
+        has no effect while the Client is running, so it must be called before [refmem mqtt_client async_run].
         This error code is exclusive to completion handlers associated with [refmem mqtt_client async_run] calls.
     ]]
 ]

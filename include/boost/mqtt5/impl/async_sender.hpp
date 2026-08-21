@@ -217,17 +217,11 @@ public:
             return resend();
         }
 
-        if (ec == asio::error::no_recovery)
-            _svc.cancel();
-
         // errors, if any, are propagated to ops
         for (auto& op : write_queue)
             op.complete(ec);
 
-        if (
-            ec == asio::error::operation_aborted ||
-            ec == asio::error::no_recovery
-        )
+        if (ec == asio::error::operation_aborted)
             return;
 
         do_write();

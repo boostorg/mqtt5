@@ -129,10 +129,7 @@ public:
         // if we failed to send the DISCONNECT packet
         // with Reason Code of 0x80 or greater.
 
-        if (
-            ec == asio::error::operation_aborted ||
-            ec == asio::error::no_recovery
-        )
+        if (ec == asio::error::operation_aborted)
             return complete(asio::error::operation_aborted);
 
         if (ec == asio::error::try_again) {
