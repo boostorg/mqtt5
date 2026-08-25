@@ -29,10 +29,13 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/prepend.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
 namespace boost::mqtt5::detail {
 
@@ -87,7 +90,7 @@ public:
     }
 
     void perform(
-        const std::vector<std::string>& topics,
+        boost::span<const std::string> topics,
         const unsubscribe_props& props
     ) {
         _num_topics = topics.size();
@@ -113,6 +116,13 @@ public:
             return complete_immediate(client::error::packet_too_large, packet_id);
 
         send_unsubscribe(std::move(unsubscribe));
+    }
+
+    void perform(
+        std::initializer_list<std::string> topics,
+        const unsubscribe_props& props
+    ) {
+        perform(std::vector(topics), props);
     }
 
     void send_unsubscribe(control_packet<allocator_type> unsubscribe) {
@@ -196,7 +206,7 @@ public:
 private:
 
     static error_code validate_unsubscribe(
-        const std::vector<std::string>& topics,
+        boost::span<const std::string> topics,
         const unsubscribe_props& props
     ) {
         for (const auto& topic : topics)
@@ -268,7 +278,7 @@ public:
     template <typename Handler>
     void operator()(
         Handler&& handler,
-        const std::vector<std::string>& topics, const unsubscribe_props& props
+        boost::span<const std::string> topics, const unsubscribe_props& props
     ) {
         detail::unsubscribe_op { _svc_ptr, std::move(handler) }
             .perform(topics, props);
