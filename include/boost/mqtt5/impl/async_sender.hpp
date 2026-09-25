@@ -236,6 +236,45 @@ public:
         do_write();
     }
 
+    // Non-owning handle to the sender that carries its associated
+    // executor and allocator by value.  Binding this type into the
+    // write completion (instead of a raw std::reference_wrapper<self_type>)
+    // ensures that Asio's associated-allocator/executor queries performed
+    // while the handler is being destroyed never dereference the sender.
+    // The sender itself is only touched from operator(), which runs only
+    // while it is still alive.
+    class sender_proxy {
+        self_type* _sender;
+        typename self_type::executor_type _ex;
+        typename self_type::allocator_type _alloc;
+    public:
+        explicit sender_proxy(self_type& sender) :
+            _sender(&sender),
+            _ex(sender.get_executor()),
+            _alloc(sender.get_allocator())
+        {}
+
+        sender_proxy(sender_proxy&&) = default;
+        sender_proxy(const sender_proxy&) = delete;
+
+        sender_proxy& operator=(sender_proxy&&) = default;
+        sender_proxy& operator=(const sender_proxy&) = delete;
+
+        using executor_type = typename self_type::executor_type;
+        executor_type get_executor() const noexcept {
+            return _ex;
+        }
+
+        using allocator_type = typename self_type::allocator_type;
+        allocator_type get_allocator() const noexcept {
+            return _alloc;
+        }
+
+        void operator()(write_queue_t write_queue, error_code ec, size_t bytes_written) {
+            (*_sender)(std::move(write_queue), ec, bytes_written);
+        }
+    };
+
     void throttled_op_done() {
         if (_limit == MAX_LIMIT)
             return;
@@ -295,7 +334,7 @@ private:
 
         _svc._stream.async_write(
             buffers,
-            asio::prepend(std::ref(*this), std::move(write_queue))
+            asio::prepend(sender_proxy { *this }, std::move(write_queue))
         );
     }
 
