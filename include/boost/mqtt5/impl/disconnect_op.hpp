@@ -28,6 +28,7 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/prepend.hpp>
+#include <boost/asio/recycling_allocator.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -77,9 +78,9 @@ public:
     disconnect_op& operator=(disconnect_op&&) = default;
     disconnect_op& operator=(const disconnect_op&) = delete;
 
-    using allocator_type = asio::associated_allocator_t<handler_type>;
+    using allocator_type = asio::recycling_allocator<void>;
     allocator_type get_allocator() const noexcept {
-        return asio::get_associated_allocator(_handler);
+        return allocator_type {};
     }
 
     using executor_type = typename client_service::executor_type;

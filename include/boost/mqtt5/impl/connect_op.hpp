@@ -22,7 +22,6 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/append.hpp>
-#include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
 #include <boost/asio/associated_executor.hpp>
 #include <boost/asio/cancellation_state.hpp>
@@ -33,6 +32,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/prepend.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/asio/recycling_allocator.hpp>
 #include <boost/asio/write.hpp>
 
 #include <cstdint>
@@ -91,9 +91,9 @@ public:
     connect_op& operator=(connect_op&&) = default;
     connect_op& operator=(const connect_op&) = delete;
 
-    using allocator_type = asio::associated_allocator_t<handler_type>;
+    using allocator_type = asio::recycling_allocator<void>;
     allocator_type get_allocator() const noexcept {
-        return asio::get_associated_allocator(_handler);
+        return allocator_type {};
     }
 
     using cancellation_slot_type = asio::cancellation_slot;

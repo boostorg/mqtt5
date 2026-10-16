@@ -113,8 +113,10 @@ public:
         );
 
         if (_svc_ptr->was_connected())
-            if (auto ec = validate_with_connack_props(subscribe.size()))
+            if (auto ec = validate_with_connack_props(subscribe.size())) {
+                subscribe.reset();
                 return complete_immediate(ec, packet_id);
+            }
 
         send_subscribe(std::move(subscribe));
     }
@@ -133,11 +135,11 @@ public:
     void resend_subscribe(control_packet<allocator_type> subscribe) {
         if (_handler.cancelled() != asio::cancellation_type_t::none)
             return complete(
-                asio::error::operation_aborted, subscribe.packet_id()
+                std::move(subscribe), asio::error::operation_aborted
             );
 
         if (auto ec = validate_with_connack_props(subscribe.size()))
-            return complete(ec, subscribe.packet_id());
+            return complete(std::move(subscribe), ec);
 
         send_subscribe(std::move(subscribe));
     }
@@ -152,7 +154,7 @@ public:
         auto packet_id = packet.packet_id();
 
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(packet), ec);
 
         _svc_ptr->async_wait_reply(
             control_code_e::suback, packet_id,
@@ -167,10 +169,8 @@ public:
         if (ec == asio::error::try_again) // "resend unanswered"
             return resend_subscribe(std::move(packet));
 
-        uint16_t packet_id = packet.packet_id();
-
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(packet), ec);
 
         auto suback = decoders::decode_suback(
             static_cast<uint32_t>(std::distance(first, last)), first
@@ -191,7 +191,7 @@ public:
         }
 
         complete(
-            ec, packet_id, std::move(reason_codes), std::move(props)
+            std::move(packet), ec, std::move(reason_codes), std::move(props)
         );
     }
 
@@ -309,7 +309,7 @@ private:
     }
 
     void complete(
-        error_code ec, uint16_t packet_id,
+        control_packet<allocator_type> packet, error_code ec,
         std::vector<reason_code> reason_codes = {}, suback_props props = {}
     ) {
         if (reason_codes.empty() && _num_topics)
@@ -324,6 +324,8 @@ private:
                 _svc_ptr->subscriptions_present(true);
         }
 
+        auto packet_id = packet.packet_id();
+        packet.reset();
         _svc_ptr->free_pid(packet_id);
         _handler.complete(ec, std::move(reason_codes), std::move(props));
     }

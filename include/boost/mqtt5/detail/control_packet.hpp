@@ -127,6 +127,10 @@ public:
     std::string_view wire_data() const {
         return *_packet;
     }
+
+    void reset() {
+        _packet.reset();
+    }
 };
 
 class packet_id_allocator {

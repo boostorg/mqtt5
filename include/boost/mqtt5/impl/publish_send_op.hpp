@@ -140,8 +140,10 @@ public:
         );
 
         if (_svc_ptr->was_connected())
-            if (auto ec = validate_with_connack_props(publish.size()))
-                return complete_immediate(ec, publish.packet_id());
+            if (auto ec = validate_with_connack_props(publish.size())) {
+                publish.reset();
+                return complete_immediate(ec, packet_id);
+            }
 
         _serial_num = _svc_ptr->next_serial_num();
         send_publish(std::move(publish));
@@ -160,11 +162,11 @@ public:
     void resend_publish(control_packet<allocator_type> publish) {
         if (_handler.cancelled() != asio::cancellation_type_t::none)
             return complete(
-                asio::error::operation_aborted, publish.packet_id()
+                std::move(publish), asio::error::operation_aborted
             );
 
         if (auto ec = validate_with_connack_props(publish.size()))
-            return complete(ec, publish.packet_id());
+            return complete(std::move(publish), ec);
 
         send_publish(std::move(publish));
     }
@@ -177,13 +179,13 @@ public:
             return resend_publish(std::move(publish));
 
         if constexpr (qos_type == qos_e::at_most_once)
-            return complete(ec);
+            return complete(std::move(publish), ec);
 
         else {
             auto packet_id = publish.packet_id();
 
             if (ec)
-                return complete(ec, packet_id);
+                return complete(std::move(publish), ec);
 
             if constexpr (qos_type == qos_e::at_least_once)
                 _svc_ptr->async_wait_reply(
@@ -215,10 +217,8 @@ public:
         if (ec == asio::error::try_again) // "resend unanswered"
             return resend_publish(std::move(publish.set_dup()));
 
-        uint16_t packet_id = publish.packet_id();
-
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(publish), ec);
 
         auto puback = decoders::decode_puback(
             static_cast<uint32_t>(std::distance(first, last)), first
@@ -235,7 +235,7 @@ public:
             return resend_publish(std::move(publish.set_dup()));
         }
 
-        complete(ec, packet_id, *rc, std::move(props));
+        complete(std::move(publish), ec, *rc, std::move(props));
     }
 
     template <
@@ -252,7 +252,7 @@ public:
         uint16_t packet_id = publish.packet_id();
 
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(publish), ec);
 
         auto pubrec = decoders::decode_pubrec(
             static_cast<uint32_t>(std::distance(first, last)), first
@@ -271,7 +271,7 @@ public:
         }
 
         if (*rc)
-            return complete(ec, packet_id, *rc);
+            return complete(std::move(publish), ec, *rc);
 
         auto pubrel = control_packet<allocator_type>::of(
             with_pid, get_allocator(),
@@ -305,7 +305,7 @@ public:
         uint16_t packet_id = pubrel.packet_id();
 
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(pubrel), ec);
 
         _svc_ptr->async_wait_reply(
             control_code_e::pubcomp, packet_id,
@@ -325,10 +325,8 @@ public:
         if (ec == asio::error::try_again) // "resend unanswered"
             return send_pubrel(std::move(pubrel), true);
 
-        uint16_t packet_id = pubrel.packet_id();
-
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(pubrel), ec);
 
         auto pubcomp = decoders::decode_pubcomp(
             static_cast<uint32_t>(std::distance(first, last)), first
@@ -346,7 +344,7 @@ public:
             return send_pubrel(std::move(pubrel), true);
         }
 
-        return complete(ec, pubrel.packet_id(), *rc);
+        return complete(std::move(pubrel), ec, *rc);
     }
 
 private:
@@ -447,7 +445,8 @@ private:
         qos_e q = qos_type,
         std::enable_if_t<q == qos_e::at_most_once, bool> = true
     >
-    void complete(error_code ec, uint16_t = 0) {
+    void complete(control_packet<allocator_type> packet, error_code ec) {
+        packet.reset();
         _handler.complete(ec);
     }
 
@@ -468,9 +467,11 @@ private:
         > = true
     >
     void complete(
-        error_code ec, uint16_t packet_id,
+        control_packet<allocator_type> packet, error_code ec,
         reason_code rc = reason_codes::empty, Props&& props = Props {}
     ) {
+        auto packet_id = packet.packet_id();
+        packet.reset();
         _svc_ptr->free_pid(packet_id, true);
         _handler.complete(ec, rc, std::forward<Props>(props));
     }

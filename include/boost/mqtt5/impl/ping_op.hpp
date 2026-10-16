@@ -16,6 +16,7 @@
 #include <boost/asio/consign.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/prepend.hpp>
+#include <boost/asio/recycling_allocator.hpp>
 
 #include <chrono>
 #include <limits>
@@ -46,9 +47,9 @@ public:
     ping_op& operator=(ping_op&&) noexcept = default;
     ping_op& operator=(const ping_op&) = delete;
 
-    using allocator_type = asio::associated_allocator_t<handler_type>;
+    using allocator_type = asio::recycling_allocator<void>;
     allocator_type get_allocator() const noexcept {
-        return asio::get_associated_allocator(_handler);
+        return allocator_type {};
     }
 
     using executor_type = typename client_service::executor_type;

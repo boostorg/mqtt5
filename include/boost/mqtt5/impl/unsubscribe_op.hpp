@@ -109,8 +109,10 @@ public:
             topics, props
         );
 
-        if (unsubscribe.size() > _svc_ptr->max_packet_size())
+        if (unsubscribe.size() > _svc_ptr->max_packet_size()) {
+            unsubscribe.reset();
             return complete_immediate(client::error::packet_too_large, packet_id);
+        }
 
         send_unsubscribe(std::move(unsubscribe));
     }
@@ -129,12 +131,12 @@ public:
     void resend_unsubscribe(control_packet<allocator_type> unsubscribe) {
         if (_handler.cancelled() != asio::cancellation_type_t::none)
             return complete(
-                asio::error::operation_aborted, unsubscribe.packet_id()
+                std::move(unsubscribe), asio::error::operation_aborted
             );
 
         if (unsubscribe.size() > _svc_ptr->max_packet_size())
             return complete(
-                client::error::packet_too_large, unsubscribe.packet_id()
+                std::move(unsubscribe), client::error::packet_too_large
             );
 
         send_unsubscribe(std::move(unsubscribe));
@@ -150,7 +152,7 @@ public:
         auto packet_id = packet.packet_id();
 
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(packet), ec);
 
         _svc_ptr->async_wait_reply(
             control_code_e::unsuback, packet_id,
@@ -165,10 +167,8 @@ public:
         if (ec == asio::error::try_again) // "resend unanswered"
             return resend_unsubscribe(std::move(packet));
 
-        uint16_t packet_id = packet.packet_id();
-
         if (ec)
-            return complete(ec, packet_id);
+            return complete(std::move(packet), ec);
 
         auto unsuback = decoders::decode_unsuback(
             static_cast<uint32_t>(std::distance(first, last)), first
@@ -189,7 +189,7 @@ public:
         }
 
         complete(
-            ec, packet_id, std::move(reason_codes), std::move(props)
+            std::move(packet), ec, std::move(reason_codes), std::move(props)
         );
     }
 
@@ -241,12 +241,14 @@ private:
     }
 
     void complete(
-        error_code ec, uint16_t packet_id,
+        control_packet<allocator_type> packet, error_code ec,
         std::vector<reason_code> reason_codes = {}, unsuback_props props = {}
     ) {
         if (reason_codes.empty() && _num_topics)
             reason_codes = std::vector<reason_code>(_num_topics, reason_codes::empty);
 
+        auto packet_id = packet.packet_id();
+        packet.reset();
         _svc_ptr->free_pid(packet_id);
         _handler.complete(ec, std::move(reason_codes), std::move(props));
     }
