@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(pid_overrun) {
         { { "topic", { qos_e::exactly_once } } }, subscribe_props {}
     );
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -73,14 +73,16 @@ void run_test(
                 BOOST_TEST(rcs[i] == reason_codes::empty);
         };
 
-    auto sub_op = detail::subscribe_op<
-        client_service_type, decltype(handler)
-    > { svc_ptr, std::move(handler) };
+    {
+        auto sub_op = detail::subscribe_op<
+            client_service_type, decltype(handler)
+        > { svc_ptr, std::move(handler) };
 
-    BOOST_TEST(static_cast<bool>(sub_op.get_executor() == asio::any_io_executor(ioc.get_executor())));
-    sub_op.perform(topics, sprops);
+        BOOST_TEST(static_cast<bool>(sub_op.get_executor() == asio::any_io_executor(ioc.get_executor())));
+        sub_op.perform(topics, sprops);
+    }
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 

@@ -40,14 +40,16 @@ BOOST_AUTO_TEST_CASE(pid_overrun) {
         BOOST_TEST(rcs[0] == reason_codes::empty);
     };
 
-    auto unsub_op = detail::unsubscribe_op<
-        client_service_type, decltype(handler)
-    > { svc_ptr, std::move(handler) };
+    {
+        auto unsub_op = detail::unsubscribe_op<
+            client_service_type, decltype(handler)
+        > { svc_ptr, std::move(handler) };
 
-    BOOST_TEST(static_cast<bool>(unsub_op.get_executor() == asio::any_io_executor(ioc.get_executor())));
-    unsub_op.perform({ "topic" }, unsubscribe_props {});
+        BOOST_TEST(static_cast<bool>(unsub_op.get_executor() == asio::any_io_executor(ioc.get_executor())));
+        unsub_op.perform({ "topic" }, unsubscribe_props {});
+    }
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -78,7 +80,7 @@ void run_test(
     > { svc_ptr, std::move(handler) }
     .perform(topics, uprops);
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 

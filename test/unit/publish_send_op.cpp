@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(pid_overrun) {
             "test", "payload", retain_e::no, {}
         );
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
@@ -77,7 +77,7 @@ void run_test(
     > { svc_ptr, std::move(handler) }
         .perform(topic_name, payload, retain_e::yes, pprops);
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 

@@ -45,7 +45,7 @@ void run_malformed_props_test(const disconnect_props& dprops) {
     > { svc_ptr, std::move(ctx), std::move(handler) }
     .perform();
 
-    ioc.poll();
+    ioc.run();
     BOOST_TEST(handlers_called == expected_handlers_called);
 }
 
