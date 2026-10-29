@@ -29,10 +29,13 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/prepend.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
 namespace boost::mqtt5::detail {
 
@@ -91,7 +94,7 @@ public:
     }
 
     void perform(
-        const std::vector<subscribe_topic>& topics,
+        boost::span<const subscribe_topic> topics,
         const subscribe_props& props
     ) {
         _num_topics = topics.size();
@@ -119,6 +122,13 @@ public:
             }
 
         send_subscribe(std::move(subscribe));
+    }
+
+    void perform(
+        std::initializer_list<subscribe_topic> topics,
+        const subscribe_props& props
+    ) {
+        perform(std::vector(topics), props);
     }
 
     void send_subscribe(control_packet<allocator_type> subscribe) {
@@ -223,7 +233,7 @@ private:
     }
 
     static error_code validate_subscribe(
-        const std::vector<subscribe_topic>& topics,
+        boost::span<const subscribe_topic> topics,
         const subscribe_props& props, validation_context& ctx
     ) {
         error_code ec;
@@ -347,7 +357,7 @@ public:
     template <typename Handler>
     void operator()(
         Handler&& handler,
-        const std::vector<subscribe_topic>& topics, const subscribe_props& props
+        span<const subscribe_topic> topics, const subscribe_props& props
     ) {
         detail::subscribe_op { _svc_ptr, std::move(handler) }
             .perform(topics, props);
